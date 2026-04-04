@@ -26,6 +26,8 @@ def get_args():
     parser.add_argument('--seed', default=0, type=int, help='random seed for reproducibility')
 
     parser.add_argument('--print_every_batches', default=100, type=int, help='print metrics every N batches during training')
+    parser.add_argument('--max_test_batches', default=0, type=int,
+                        help='max batches per epoch for quick test; 0 means use full loader')
 
     return parser.parse_args()
 

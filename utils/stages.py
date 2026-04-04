@@ -3,7 +3,6 @@ from tqdm import tqdm
 from Metric import SegmentationMetric
 import logging
 from tensorboardX import SummaryWriter
-import os
 
 def train_epoch(model: torch.nn.Module,
                 train_loader: torch.utils.data.DataLoader,
@@ -40,9 +39,9 @@ def train_epoch(model: torch.nn.Module,
     train_metric = SegmentationMetric(numClass=2)
     train_loss_sum = 0.0
     train_batch_count = 0
-    max_test_batches = int(os.getenv("MAX_TEST_BATCHES", "0"))
+    max_test_batches = args.max_test_batches
 
-    for idx_batch_train, (image_A, image_B, label, edge, img_id) in enumerate(tqdm(train_loader, desc=f"Train Epoch {epoch_id}/{args.num_epochs}")):
+    for idx_batch_train, (image_A, image_B, label, edge, img_ids) in enumerate(tqdm(train_loader, desc=f"Train Epoch {epoch_id}/{args.num_epochs}")):
         if max_test_batches > 0 and idx_batch_train >= max_test_batches:
             break
         train_batch_count += 1
@@ -69,6 +68,7 @@ def train_epoch(model: torch.nn.Module,
         batch_train_records.append({
             'epoch': epoch_id,
             'batch': idx_batch_train,
+            'img_id': img_ids,  # 记录图像ID列表（batch）
             'loss': loss.item(),
             'iou': train_metric.IntersectionOverUnion(),
             'oa': train_metric.OverallAccuary(),
@@ -153,10 +153,10 @@ def validate_epoch(model: torch.nn.Module,
     val_metric = SegmentationMetric(numClass=2)
     val_loss_sum = 0.0
     val_batch_count = 0
-    max_test_batches = int(os.getenv("MAX_TEST_BATCHES", "0"))
+    max_test_batches = args.max_test_batches
 
     with torch.no_grad():
-        for idx_batch_val, (image_A, image_B, label, edge, img_id) in enumerate(tqdm(val_loader, desc=f"Val Epoch {epoch_id}/{args.num_epochs}")):
+        for idx_batch_val, (image_A, image_B, label, edge, img_ids) in enumerate(tqdm(val_loader, desc=f"Val Epoch {epoch_id}/{args.num_epochs}")):
             if max_test_batches > 0 and idx_batch_val >= max_test_batches:
                 break
             val_batch_count += 1
@@ -179,6 +179,7 @@ def validate_epoch(model: torch.nn.Module,
             batch_val_records.append({
                 'epoch': epoch_id,
                 'batch': idx_batch_val,
+                'img_id': img_ids,  # 记录图像ID列表（batch）
                 'loss': loss.item(),
                 'iou': val_metric.IntersectionOverUnion(),
                 'oa': val_metric.OverallAccuary(),

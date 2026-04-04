@@ -37,7 +37,7 @@ class Dataset(torch.utils.data.Dataset):
         image_B=cv2.imread(image_item_B)
         label=cv2.imread(label_item,cv2.IMREAD_GRAYSCALE)
         edge = cv2.imread(edge_item, cv2.IMREAD_GRAYSCALE)
-        img_ids = self.ids[item]
+        img_id = self.ids[item]
 
         if self.is_train:
             img1, img2, label,edge = augment_transforms([image_A, image_B, label,edge])
@@ -69,7 +69,7 @@ class Dataset(torch.utils.data.Dataset):
             label_tensor = torch.tensor(label).type(torch.long)
             edge_tensor = torch.tensor(edge).type(torch.long)
             # label_tensor = torch.squeeze(label_tensor)
-        return image_tensor_A, image_tensor_B, label_tensor, edge_tensor,img_ids
+        return image_tensor_A, image_tensor_B, label_tensor, edge_tensor, img_id
 
     def __len__(self):
         return len(self.ids)
