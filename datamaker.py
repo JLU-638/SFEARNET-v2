@@ -51,5 +51,5 @@ def caculate_edge(datapath, savepath):
 if __name__ == '__main__':
     # caculate_edge(datapath=r'E:\change_detection_all\data\test',
     #               savepath=r'E:\change_detection_all\data\test')
-    caculate_edge(datapath=r'D:\Download\LEVIR-CD-256',
-                  savepath=r'D:\Download\LEVIR-CD-256')
+    caculate_edge(datapath=r'/home/fengruyue/lvguixin/SFEARNet/data/datasets/CLCD_256',
+                  savepath=r'/home/fengruyue/lvguixin/SFEARNet/data/datasets/CLCD_256')

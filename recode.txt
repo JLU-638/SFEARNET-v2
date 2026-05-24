@@ -1,0 +1,97 @@
+Unified Algorithm and Formula Record
+
+Project: SFEARNet_test
+Purpose: Record the single paper-ready algorithm derived from the current innovation code and its corresponding mathematical formulas.
+
+================================================================
+Algorithm: Annotation-Consistent Bounded Multi-Task Optimization
+================================================================
+
+Algorithm Description:
+Input the bi-temporal remote sensing images I_A and I_B into the change detection network, and obtain the change prediction logits P, edge prediction logits E, and bi-temporal deep features F_A and F_B. To suppress pseudo-change responses, directly apply channel-wise L2 normalization to F_A and F_B, compute the pixel-wise Euclidean distance between the two temporal features, and supervise this distance with the binary change label Y: unchanged pixels are pulled closer, while changed pixels are separated by a margin. The resulting contrastive objective is normalized and clipped into a bounded range. In parallel, compute the segmentation and edge losses, normalize or clip all branches, and fuse them with alpha, beta, and gamma to form the final bounded multi-task training objective.
+
+Algorithm Steps:
+Step 1. Input bi-temporal images I_A and I_B, change label Y, edge label Y_e, margin m, and weights alpha, beta, gamma.
+Step 2. Feed I_A and I_B into the network to obtain prediction logits P, edge logits E, and deep features F_A and F_B.
+Step 3. Directly apply channel-wise L2 normalization to F_A and F_B.
+Step 4. Compute the pixel-wise feature distance d_ij.
+Step 5. Construct the label-guided contrastive loss according to Y.
+Step 6. Average, normalize, and clamp the contrastive loss to obtain L_ctr_norm.
+Step 7. Compute cross-entropy loss and IoU loss for the segmentation branch.
+Step 8. Compute edge loss for the edge branch.
+Step 9. Normalize or clamp the segmentation, edge, and contrastive losses into bounded ranges.
+Step 10. Fuse all branches using alpha, beta, and gamma.
+Step 11. Clamp the final objective to [0,1] and update model parameters by backpropagation.
+
+================================================================
+Corresponding Formulas
+================================================================
+
+1. Direct feature normalization:
+f_A(i,j) = F_A(i,j) / ||F_A(i,j)||_2
+f_B(i,j) = F_B(i,j) / ||F_B(i,j)||_2
+
+2. Pixel-wise feature distance:
+d_ij = ||f_A(i,j) - f_B(i,j)||_2
+
+3. Pixel-wise contrastive loss:
+L_ctr^(i,j) = (1 - y_ij) * 0.5 * d_ij^2 + y_ij * 0.5 * max(0, m - d_ij)^2
+
+where:
+- y_ij in {0,1}
+- y_ij = 0 means unchanged
+- y_ij = 1 means changed
+- m is the contrastive margin
+
+4. Image-level contrastive loss:
+L_ctr = (1 / (H * W)) * sum_{i=1 to H} sum_{j=1 to W} L_ctr^(i,j)
+
+5. Normalized contrastive branch:
+L_ctr_norm = clip( L_ctr / max(1, 0.5 * m^2), 0, 1 )
+
+6. Cross-entropy normalization:
+L_ce_norm = 1 - exp(-L_ce)
+
+7. IoU loss normalization:
+L_iou_norm = clip(L_iou, 0, 1)
+
+8. Segmentation branch fusion:
+L_seg = alpha * L_ce_norm + (1 - alpha) * L_iou_norm
+
+where alpha in [0,1] controls the balance between classification supervision and overlap supervision.
+
+9. Edge branch normalization:
+L_edge_norm = clip(L_edge, 0, 1)
+
+10. Final multi-task joint optimization objective:
+L_all = (1 - beta - gamma) * L_seg + beta * L_ctr_norm + gamma * L_edge_norm
+
+11. Coefficient constraints:
+0 <= beta <= 1
+0 <= gamma <= 1
+beta + gamma <= 1
+
+12. Final bounded loss:
+L = clip(L_all, 0, 1)
+
+================================================================
+Paper Mapping
+================================================================
+
+The single algorithm corresponds to the complete training objective of the proposed method:
+- label-guided pixel-wise feature contrastive supervision;
+- bounded segmentation, edge, and contrastive branch normalization;
+- annotation-consistent multi-task joint optimization.
+
+Important Code Consistency Notes:
+- Current method uses direct L2 normalization and distance constraint on F_A and F_B.
+- The previously discussed 1x1 convolution projection head is not part of the active implementation.
+- The implementation follows:
+  y_ij = 0 -> unchanged
+  y_ij = 1 -> changed
+- Current margin setting in train.py is:
+  m = 3.0
+- Current default loss weights in args are:
+  alpha = 0.5
+  beta = 0.1
+  gamma = 0.4

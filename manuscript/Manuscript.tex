@@ -1,0 +1,88 @@
+\documentclass[lettersize,journal]{IEEEtran}
+\usepackage{amsmath,amsfonts}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{array}
+\usepackage[caption=false,font=normalsize,labelfont=sf,textfont=sf]{subfig}
+\usepackage{textcomp}
+\usepackage{stfloats}
+\usepackage{url}
+\usepackage{verbatim}
+\usepackage{graphicx}
+\usepackage{cite}
+\hyphenation{op-tical net-works semi-conduc-tor IEEE-Xplore}
+% updated with editorial comments 8/9/2021
+
+% 自定义命令
+\newcommand{\ie}{\textit{i.e.}}
+\newcommand{\etc}{\textit{etc.}}
+\newcommand{\etal}{\textit{et~al.~}}
+\newcommand{\eg}{\textit{e.g.}}
+\newcommand{\cf}{\textit{c.f.}}
+\algrenewcommand\alglinenumber[1]{\scriptsize #1}
+\newcommand{\algstep}[2]{\State \makebox[1.8em][r]{\scriptsize #1}\quad #2}
+
+
+\begin{document}
+
+    \title{Remote Sensing Changing Detection with\\ Fake Changing Suppressing}
+    
+    \author{
+        Guixin Lv,$^{1,2}$,
+        Ziyou Guo$^{1,2}$,
+        Ruyue Feng$^{2}$,
+        Tieru Wu$^{2,*}$,
+        Xiao Du$^{3,*}$    
+        \thanks{$^{1}$These authors contribute to this paper equally.}
+        \thanks{$^{2}$These authors are with the School of Artificial Intelligence, Jilin University, Changchun City, Jilin Province, China. Email: lvgx24@mails.jlu.edu.cn, guozy22@mails.jlu.edu.cn, fengry21@mails.jlu.edu.cn, wutr@mail.jlu.edu.cn}
+        \thanks{$^{3}$These authors are with the School of Mathematics, Jilin University, Changchun City, Jilin Province, China. Email: duxiao18@mails.jlu.edu.cn}
+        \thanks{$^{*}$Corresponding authors.}
+    }    
+    
+    % The paper headers
+    \markboth{Journal of IEEE Transactions on Geoscience and Remote Sensing ~Vol.~XX, No.~X, August~202X}%
+    {Shell \MakeLowercase{\textit{et al.}}: Remote Sensing Changing Detection with Fake Changing Suppressing}
+    
+    \IEEEpubid{0000--0000/00\$00.00~\copyright~2021 IEEE}
+    % Remember, if you use this you must call \IEEEpubidadjcol in the second
+    % column for its text to clear the IEEEpubid mark.
+    
+    \maketitle    
+    
+    % 摘要和关键词
+    \input{Sections/0-Abstract}
+    
+    % 引言
+    \input{Sections/1-Introduction}
+    
+    % 相关工作
+    \input{Sections/2-Related_Work}
+    
+    % 预备知识
+    \input{Sections/3-Preliminary}
+    
+    % 方法
+    \input{Sections/4-Methodology}
+    
+    % 实验
+    \input{Sections/5-Experiment}
+    
+    % 结论
+    \input{Sections/6-Conclusion}       
+    
+    % 致谢、项目、基金
+    \input{Sections/7-Acknowledgments}    
+    
+    % 附录
+    \input{Sections/8-Appendix}    
+    
+    % 引用文献列表
+    \bibliographystyle{IEEEtran}  % 选择 IEEE 的引用样式
+    \bibliography{references}    % 这里是你的 .bib 文件的名字，不需要加扩展名    
+    
+    \newpage    
+    
+    % 作者简介。    
+    \input{Sections/9-Biography}    
+
+\end{document}

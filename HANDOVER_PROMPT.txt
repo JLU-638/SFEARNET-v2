@@ -1,0 +1,407 @@
+请先阅读并遵循以下交接步骤。
+
+1) 先读项目进展文件：
+`/home/fengruyue/lvguixin/SFEARNet_test/PROJECT_PROGRESS.md`
+
+2) 再核对当前关键代码，不要只沿用旧记忆：
+- `/home/fengruyue/lvguixin/SFEARNet_test/model/SFEARNet.py`
+- `/home/fengruyue/lvguixin/SFEARNet_test/loss/ContrastiveLoss.py`
+- `/home/fengruyue/lvguixin/SFEARNet_test/utils/stages.py`
+- `/home/fengruyue/lvguixin/SFEARNet_test/train.py`
+- `/home/fengruyue/lvguixin/SFEARNet_test/utils/args_utils.py`
+
+3) 当前论文背景：
+- 任务是遥感变化检测。
+- 核心痛点是“伪变化”：视觉上存在变化，但数据集标注中不算变化。
+- 方法目标是让预测更贴近数据集标注语义，而不是仅对视觉差异敏感。
+
+4) 你需要先做的事：
+- 用自己的话复述对当前方法创新点的理解。
+- 明确区分：已有 SFEARNet 基线部分 vs 当前新增创新部分。
+- 先指出当前代码与论文表述是否仍然一致，再给下一步建议。
+- 下一步建议优先面向论文 Method/Experiment 写作、可复现实验和消融设计。
+
+5) 协作要求：
+- 每次对话结束前，更新 `PROJECT_PROGRESS.md`，记录“本轮做了什么、结论是什么、下一步是什么”。
+- 如果对代码理解有不确定点，请先查文件再下结论。
+- 不要把 SFEARNet 主体结构本身写成当前项目创新。
+- 术语优先使用“多任务联合优化”，不要泛泛写成“多损失”。
+
+6) 当前已确认的方法边界：
+- 基线部分：
+  - SFEARNet 主体结构、语义流/边缘感知预测框架和基本编码解码流程。
+- 当前新增创新主要在两处：
+  - `loss/ContrastiveLoss.py` 中的标签引导像素级特征对比约束；
+  - `utils/stages.py` 中的有界三分支多任务联合优化。
+- `model/SFEARNet.py` 当前向训练阶段返回四个输出：
+  1. 变化预测 logits；
+  2. 边缘预测 logits；
+  3. 第一时相深层特征；
+  4. 第二时相深层特征。
+
+7) 非常重要的代码一致性结论：
+- 旧记录和部分 Methodology 文本曾写过“两层 `1x1 conv + BN + ReLU` 投影头”。
+- 但是当前 `loss/ContrastiveLoss.py` 中这些投影层是注释状态，实际没有执行。
+- 用户已经确认：当前方法按“直接对双时相深层特征做 L2 归一化和距离约束”来写，不恢复投影头。
+- 当前真实执行流程是：
+  1. 双时相图像输入 SFEARNet，输出变化预测、边缘预测、双时相深层特征；
+  2. `ContrastiveLoss` 直接对 `feat1` 和 `feat2` 做通道维 L2 归一化；
+  3. 逐像素计算归一化特征之间的欧氏距离；
+  4. 用变化标签监督该距离：未变化区域拉近，变化区域用 margin 拉开；
+  5. 将分割损失、边缘损失、对比损失做有界归一化后进行联合优化。
+- 后续论文、PPT、算法描述都应删除投影头相关表述，统一为“直接特征归一化 + 距离约束”。
+
+8) 当前已确认的目标函数（以当前代码优先）：
+- 设 `y_ij in {0,1}` 为像素标签，`0` 表示未变化，`1` 表示变化。
+- 当前代码中，双时相特征直接归一化：
+`f_A(i,j) = normalize(F_A(i,j))`
+`f_B(i,j) = normalize(F_B(i,j))`
+- 设 `d_ij = ||f_A(i,j) - f_B(i,j)||_2` 为双时相特征距离。
+- 对比损失：
+`L_ctr(i,j) = (1 - y_ij) * 0.5 * d_ij^2 + y_ij * 0.5 * max(0, m - d_ij)^2`
+- 图像级对比损失：
+`L_ctr = clamp(mean(L_ctr(i,j)) / max(1, 0.5*m^2), 0, 1)`
+- 分割分支：
+`L_ce_norm = 1 - exp(-L_ce)`
+`L_iou_norm = clamp(L_iou, 0, 1)`
+`L_seg = alpha * L_ce_norm + (1 - alpha) * L_iou_norm`
+- 总目标函数：
+`L_all = (1 - beta - gamma) * L_seg + beta * L_ctr + gamma * L_edge_norm`
+`L = clamp(L_all, 0, 1)`
+- 代码约束：
+`0 <= beta <= 1`, `0 <= gamma <= 1`, `beta + gamma <= 1`
+
+9) 当前创新点的推荐表述：
+- 创新点1：标签引导的像素级特征对比约束，用于抑制伪变化干扰。
+- 创新点2：有界归一化的多任务联合优化，使分割、边缘、对比三个分支在统一数值范围内协同训练。
+- 创新点3：方法目标是更贴近数据集标注语义的一致性变化检测，而不是仅追求视觉差异响应。
+
+10) 当前论文算法组织方式：
+- 用户已确认论文中只写一个算法，不再拆成 Algorithm 1 和 Algorithm 2。
+- 单一算法标题建议使用：
+  `Annotation-Consistent Bounded Multi-Task Optimization`
+- 该算法应整体覆盖：
+  1. 双时相输入与网络输出；
+  2. 双时相深层特征直接 L2 归一化；
+  3. 像素级距离计算和标签引导对比约束；
+  4. 分割、边缘、对比三分支损失归一化；
+  5. `alpha/beta/gamma` 加权融合；
+  6. 最终有界损失和反向传播。
+- `recode.txt` 已更新为单算法版本，可作为后续 PPT 或论文伪代码来源。
+
+11) 当前需要特别注意的实现细节：
+- `train.py` 中 `margin` 当前写死为 `3.0`。
+- 由于特征做了 L2 归一化，理论上欧氏距离上界接近 `2`，因此后续如讨论超参数或做消融，必须核对该设置是否有意设计。
+- `utils/args_utils.py` 已有 `alpha/beta/gamma` 参数，但训练脚本目前没有显式传入这些值，主要依赖默认值。
+- `experiment_scripts/SFEARNet/LEVIR_CD_256/`、`WHU-CD/`、`CLCD/` 下已有训练脚本，可作为多数据集实验入口。
+- `infer_IOU.py`、`infer_WHCD_IOU.py`、`infer_CLCD_IOU.py` 当前包含硬编码路径，正式复现实验前应参数化。
+- `.gitignore` 当前忽略 `manuscript/`，所以论文文件改动不会出现在普通 `git status` 中。
+
+12) 下一轮优先任务建议：
+- 优先任务1：继续清查并修改任何仍然提到“投影头”的论文/PPT文字。
+- 优先任务2：将 `margin` 暴露为命令行参数，方便后续敏感性实验。
+- 优先任务3：整理 `alpha/beta/gamma/margin` 消融实验表与脚本。
+- 优先任务4：继续完善 `Introduction` 和 `Experiment`，围绕“伪变化”和“标注一致性”组织实验分析。
+
+13) 持续记录约定（新增）：
+- 每轮对话结束前，同时更新以下两个文件：
+  - `PROJECT_PROGRESS.md`：记录“本轮做了什么、结论是什么、下一步是什么”；
+  - `HANDOVER_PROMPT.txt`：仅在协作规则、方法边界、代码一致性结论发生变化时追加或修订。
+- 记录风格要求：
+  - 结论优先、简洁可执行，避免重复长段落；
+  - 若发现与旧记录冲突，以“当前代码核对结果”为最高优先级并显式标注变更点。
+
+14) Algorithm 1 写作风格约定（新增）：
+- 算法步骤优先使用“动作描述”而非连续公式引用，不要把每一步都写成“by Eq.(x)”。
+- 算法内必须给关键变量做简短注解（输入、输出、核心中间量）。
+- 仅保留少量关键公式引用（如网络映射、总目标融合、最终有界损失），其余步骤用自然语言流程表达。
+- 行文避免机械重复，优先使用“计算/聚合/归一化/融合/更新”等过程化动词。
+
+15) 2026-05-18 脚本一致性状态（新增）：
+- 已完成 `train_default.sh` 的 DataLoader 参数对齐：
+  - `experiment_scripts/SFEARNet/CLCD/train_default.sh`
+  - `experiment_scripts/SFEARNet/WHU-CD/train_default.sh`
+  - `experiment_scripts/SFEARNet/LEVIR_CD_256/train_default.sh`
+- 三者当前均显式传入：
+  - `--num_workers`
+  - `--pin_memory`
+  - `--persistent_workers`
+- 目录核对结论：
+  - `experiment_scripts/SFEARNet/GZ-CD/` 目录存在，但当前无脚本文件。
+- 待后续清理项：
+  - `WHU-CD/infer_default.sh` 与 `WHU-CD/infer_simple_IOU.sh` 名称为 infer，但实际调用 `train.py`，需后续拆分为真实推理脚本。
+
+16) 2026-05-18 当前最高优先协作约定（确认）：
+- 用户明确要求：每次运行都要维护 `PROJECT_PROGRESS.md` 和 `HANDOVER_PROMPT.txt`。
+- 后续执行规则：
+  - 每轮结束前必须更新 `PROJECT_PROGRESS.md`，记录本轮动作、结论、风险或下一步；
+  - 当交接规则、方法边界、代码事实、实验入口、论文写作约束发生变化时，必须同步更新 `HANDOVER_PROMPT.txt`；
+  - 如果 `HANDOVER_PROMPT.txt` 无需实质更新，也要在 `PROJECT_PROGRESS.md` 中说明原因，避免接手者误判为遗漏。
+
+17) 2026-05-19 维护状态（新增）：
+- 本轮继续执行“双文件同步维护”约定，已在 `PROJECT_PROGRESS.md` 记录对应更新。
+- 当前未出现新的方法边界变更或代码事实冲突，因此本文件仅追加维护状态，不改动既有技术结论。
+
+18) 2026-05-19 对比损失输入结论（新增）：
+- 方法图中对比分支输入应标注为：
+  - `F_A^{deep}` 与 `F_B^{deep}`（来自两时相最深层特征，代码为 `x1[3], x2[3]`，并上采样到标签分辨率）；
+  - 监督标签 `Y`（二值变化标签）。
+- 训练调用位置：`criterion_contrast(model_x[2], model_x[3], label)`。
+- 结论：对比损失不直接使用变化 logits `P` 作为输入。
+
+19) 2026-05-19 baseline 模型归档状态（新增）：
+- 已将首批 baseline 主网络源码集中到 `model/` 目录，便于统一训练框架接入。
+- 当前已落地文件：
+  - `USSFCNet.py`, `EATDer.py`, `Net.py`, `CDNet.py`, `SiamUnet_diff.py`, `SiamUnet_conc.py`
+- 同名类冲突处理：
+  - `BASE_Transformer` 在 BIT_CD 与 ChangeFormer 均存在，暂以文件名区分：
+    - `BASE_Transformer_BIT.py`
+    - `BASE_Transformer_ChangeFormer.py`
+- 后续接入规则：
+  - 统一训练前需先修复这些文件中的相对导入依赖（原 baseline 路径引用），再做统一 `model registry/factory`。
+
+20) 2026-05-19 歧义 baseline 拆分规则（新增）：
+- 对于包含多网络候选的 baseline（如 STANet、MSCA-Net），不再只保留单一入口；
+- 执行方式：按具体网络模型分别在 `model/` 下建立独立脚本，以支持统一训练框架按模型粒度接入；
+- 当前已补齐的代表文件：
+  - STANet: `mynet3.py`, `CDSA.py`, `BAM.py`, `PAM.py`
+  - MSCA-Net: `Comprehensive_Atten_Unet.py`, `BCDU_net_D3.py`, `CPF_Net.py`, `CE_Net.py`, `msca_net.py`
+
+21) 2026-05-19 SFEARNet 子包隔离状态（新增）：
+- 已将 SFEARNet 及其依赖模块隔离到 `model/sfearnet/` 子包，避免与 baseline 模型脚本混放。
+- 兼容策略：
+  - `model/SFEARNet.py` 当前为转发入口（shim），继续兼容旧导入路径：
+    `from model.SFEARNet import SFEARNet`。
+- 预训练权重状态：
+  - `model/sfearnet/model_data/` 当前仅有 `b0_backbone_weights.pth`；
+  - 若使用 `phi='b1'` 且 `pretrained=True`，需补齐 `b1_backbone_weights.pth`。
+
+22) 2026-05-19 SFEARNet 目录最终约束（新增）：
+- SFEARNet 相关定义仅允许存在于 `model/sfearnet/` 子目录内。
+- 主入口：`from model.sfearnet import SFEARNet`（定义位于 `model/sfearnet/__init__.py`）。
+- 禁止恢复以下外层文件：
+  - `model/SFEARNet.py`, `model/backbone.py`, `model/semantic_flow.py`, `model/edge_aware.py`, `model/pyramid.py`, `model/CBAM.py`。
+- 现有 train/infer 脚本已切换到新入口。
+
+23) 2026-05-19 SFEARNet 子包审核结果（新增）：
+- `model/sfearnet/` 已完成相对导入改造，静态语法编译通过。
+- 当前会话环境缺少 `torch`，未完成动态实例化与前向测试；后续需在有 PyTorch 的运行环境做最终运行验证。
+- 预训练权重提醒：`phi='b1'` 仍需 `model/sfearnet/model_data/b1_backbone_weights.pth`。
+
+24) 2026-05-19 SFEARNet I/O 文档状态（新增）：
+- 已在 `model/sfearnet/__init__.py` 为 `SFEARNet` 与 `forward` 增加 reStructuredText 风格文档。
+- 文档已明确：
+  - 输入：`input1,input2` 为 `[B,3,H,W]`；
+  - 输出：`x, edge, feat1, feat2`，其中前两者为 `[B,num_classes,H,W]`，后两者为 `[B,C_deep,H,W]`；
+  - `C_deep` 由 `phi` 决定（`b0=256`, `b1=512`）。
+
+25) 2026-05-19 文档风格更新（新增）：
+- `model/sfearnet/__init__.py` 中 `SFEARNet` 与 `forward` 的函数文档已从 reST 改为 Google 风格。
+- 原因：提升 VSCode/Pylance 悬浮提示可读性与识别效果。
+
+26) 2026-05-19 VSCode 识别增强（新增）：
+- 除 Google 风格文档外，已为 `SFEARNet` 增加函数签名类型注解（参数与返回类型）。
+- 目的：提升 Pylance 的悬浮提示与类型推断可读性，减少“docstring 仅文本显示”的困扰。
+
+27) 2026-05-19 baseline 统一接口状态（新增）：
+- 已新增 `model/baseline_adapters.py`，用于在不改 baseline 原始定义的前提下统一 forward 输出。
+- 统一输出协议：`(logits, edge, feat1, feat2)`。
+- 当前策略：无对应分支的 baseline 以 `None` 占位，后续由训练阶段按需分支处理。
+
+28) 2026-05-19 文档默认执行约定（新增）：
+- 新增或维护核心工具模块（如 adapter/registry/factory）时，默认补齐类与函数文档（Google 风格）。
+- 若用户未特别指定，可按“类型注解 + Google 风格 docstring”执行，不再等待额外提醒。
+
+29) 2026-05-19 文档语言约定（新增）：
+- 函数/类文档默认使用中文说明。
+- 变量命名、类型注解、代码语法与标识符保持英文。
+- 当前已应用到：
+  - `model/baseline_adapters.py`
+  - `model/sfearnet/__init__.py` 中 `SFEARNet` 相关文档。
+
+30) 2026-05-19 方法图命名建议（新增）：
+- 对比创新模块推荐名称：
+  - `Label-Guided Feature Contrast Module (LGFCM)`。
+- 命名依据：与当前实现保持一致（标签引导 + 双时相深层特征对比约束）。
+
+30) 2026-05-19 SFEARNet 运行兼容性确认（新增）：
+- `train.py` 与各 `infer*.py` 入口已统一使用 `from model.sfearnet import SFEARNet`。
+- 当前主实验配置 `phi='b0', pretrained=True` 所需权重文件存在，调用链保持可用。
+- 风险仅在 `phi='b1'` 预训练权重缺失，不影响当前 b0 主线实验。
+
+31) 2026-05-19 AMTNet 主模型确认（新增）：
+- AMTNet 的当前训练/测试入口实际使用的是 `model/network.py` 中的 `CDNet`。
+- `baselines/AMTNet/model/` 下的其他文件是候选/派生网络实现，不应误认为是当前主训练对象。
+
+32) 2026-05-20 CDNet 包化状态（新增）：
+- 已将 CDNet 封装为 `model/cdnet/` 子包。
+- 主定义入口：`model/cdnet/__init__.py`。
+- 关联依赖已并入包内：`backbone.py`, `modules.py`。
+- 兼容入口保留：`model/CDNet.py` 当前仅转发 `from model.cdnet import CDNet`。
+
+33) 2026-05-20 CDNet 兼容壳移除（新增）：
+- `model/CDNet.py` 已删除。
+- `model/baseline_adapters.py` 现直接从 `model.cdnet` 导入 `CDNet`，并通过 `isinstance(base_model, CDNet)` 选择 CDNet 适配规则。
+- 结论：后续应统一使用包入口 `from model.cdnet import CDNet`。
+
+17) 2026-05-21 Forward 流程绘图要点（新增）：
+- 主前向实现以 `model/sfearnet/__init__.py` 为准，`SFEARNet.forward` 输出四项：`x, edge, feat1, feat2`。
+- `feat1/feat2` 来自双时相 backbone 最深层特征（`x1[3], x2[3]`）上采样，不经过 `Pyramid_Merge`、`Edge_Guidance`、`decode_head`。
+- `Pyramid_Merge` 是逐尺度双时相融合核心：
+  - 路径A：`concat(input1,input2) -> 1x1 DW+PW conv -> CBAM`
+  - 路径B：`abs(input1-input2) -> Pyramid_Extraction(多膨胀率+全局分支)`
+  - 输出：`out = 路径A + 路径B增强结果`
+- 画图约束：对比损失分支应从 deepest backbone 特征单独分出，并在损失融合节点与分割/边缘分支汇合，而不是从 change logits 分出。
+
+18) 2026-05-21 SFEARNet 直观流程图补充约定（新增）：
+- 若用户要“详细流程图”，优先按 3 个可视化层次输出：
+  1) 编码层（shared dual-stream MiT backbone, C1-C4）；
+  2) 融合层（Pyramid_Merge 双路径）；
+  3) 引导解码层（Edge_Guidance + SegFormer decode）。
+- `Pyramid_Merge` 可视化必须拆开两条路径：
+  - Path A: `concat -> 1x1 DW+PW Conv -> CBAM`
+  - Path B: `abs diff -> Pyramid_Extraction(4 dilation branches + global branch)`
+  - Merge: `PathA + PathB`
+- `Edge_Guidance_0/1` 可视化必须体现：
+  - 边缘图从浅层+深层特征产生；
+  - 该边缘图下采样为多尺度掩码并作用于 C1-C4（乘法+残差）；
+  - 再经各尺度 CBAM 输出给 decode head。
+- 解码头（SegFormerHead_0/1）可视化建议：
+  - C4/C3/C2 先线性嵌入，再通过 `Semantic_flow` 对齐到 C1 尺度并与双线性上采样结果相加；
+  - 与 C1 嵌入拼接后 1x1 融合、dropout、分类卷积。
+
+19) 2026-05-21 架构解释输出偏好（新增）：
+- 当用户明确要“流程图/结构图”时，优先输出模块内部连接关系（block graph），避免以特征图尺寸为主。
+- 对 SFEARNet 建议固定拆成三图：
+  1) Backbone 单 stage 通用结构；
+  2) Pyramid_Merge 双路径结构；
+  3) Edge_Guidance + SegFormer decode 结构。
+- 可直接提供 Mermaid 代码，便于用户快速复制生成图。
+
+20) 2026-05-22 Attention 判定结论（新增）：
+- `model/sfearnet/backbone.py` 中 `Attention` 不是最朴素的全局 MHA。
+- 其关键差异是 `sr_ratio` 触发的 K/V 空间降采样分支：Q 保持全分辨率 token，K/V 由卷积降采样后参与注意力计算。
+- 因此在论文/答辩表述中建议称为“MiT/SegFormer-style spatial-reduction self-attention”。
+
+21) 2026-05-22 Transformer Block 归一化说明（新增）：
+- `Block` 中 `norm1` 与 `norm2` 都来自 `norm_layer`，在 `mit_b0/mit_b1` 中被实例化为 `LayerNorm(eps=1e-6)`。
+- 归一化位置是 pre-norm：`x + Attn(norm1(x))`，`x + MLP(norm2(x))`。
+- 建议图示中明确写“LayerNorm (token/channel dim)”以避免与 CNN 分支 BatchNorm 混淆。
+
+22) 2026-05-22 Pyramid_Merge 图示规范（新增）：
+- 面向“直观流程图”时，`Pyramid_Merge` 必须拆成两层：
+  - 主模块：Path A（concat context）+ Path B（abs-diff pyramid）+ Add merge；
+  - 子模块：`Pyramid_Extraction` 的 5 分支（多膨胀率 + 全局分支）及 concat/fuse。
+- 推荐图注关键词：
+  - Path A: complementary context enhancement
+  - Path B: change-saliency extraction
+  - Output: additive residual fusion
+
+23) 2026-05-22 AbsDiff 定义澄清（新增）：
+- `AbsDiff Feature` 不是 backbone 的原生单路输出。
+- 它是同尺度双时相 backbone 特征的派生量：`|F_t1^s - F_t2^s|`。
+- 图示建议：把 AbsDiff 画成由两路 backbone 特征汇入的运算节点，而不是 backbone 直接输出端口。
+
+24) 2026-05-22 C1~C4 到 Pyramid_Merge 的连接澄清（新增）：
+- 输入不是把 C1~C4 先拼成一个张量再融合。
+- 正确流程是“逐层配对、逐层独立融合”：
+  - `py1(C1_t1, C1_t2) -> F1`
+  - `py2(C2_t1, C2_t2) -> F2`
+  - `py3(C3_t1, C3_t2) -> F3`
+  - `py4(C4_t1, C4_t2) -> F4`
+- 输出仍是 4 层金字塔列表 `[F1,F2,F3,F4]`，再送入 Edge_Guidance/Decode。
+
+25) 2026-05-22 单个 Pyramid_Merge 内部流程（新增）：
+- 输入：同尺度双时相特征 `(F_t1^s, F_t2^s)`。
+- 分支A（互补上下文）：`concat -> conv(1x1 DW+PW) -> CBAM`。
+- 分支B（变化显著性）：`absdiff -> Pyramid_Extraction -> +absdiff`。
+- 输出：`F_out^s = A + B`（逐元素加和）。
+- 画图建议：将分支B中的 `+absdiff` 明确画成 residual shortcut，避免误解为纯串联卷积块。
+
+26) 2026-05-22 分割损失计算位置澄清（新增）：
+- 变化分割损失不是对 `eg[1:]` 四层特征逐层分别计算。
+- 实际流程：`eg[1:]` 先送入 `decode_head` 融合为单个变化 logits，再经 `re` 上采样，最后用该 logits 计算 CE/IoU。
+- 图示建议：在 decode 后画一个“Change Logits”节点，分割损失只从该节点连出。
+
+27) 2026-05-24 解码器画图粒度建议（新增）：
+- 顶层建议只画 4 个主块：
+  1. 四路输入特征 `F1~F4`
+  2. `Linear Embedding`
+  3. `Alignment`（C2/C3/C4 对齐到 C1）
+  4. `Concat -> 1x1 Fuse -> Dropout -> Classifier`
+- 若要更细，再把 `Alignment` 展开为：`Semantic_flow + Bilinear path + Add`。
+- 图里不要把它画成 U-Net 式逐级上采样；它更像“多尺度对齐后一次性融合分类头”。
+
+34) 2026-05-24 形状记号说明（新增）：
+- `C/H/W` 分别表示通道（channel）、高度（height）、宽度（width）。
+- `B` 表示 batch size。
+- 后续在图、代码文档、论文方法里统一使用该约定。
+
+35) 2026-05-24 具体尺寸约定（新增）：
+- 当前项目输入图像通常为 `3 x 256 x 256`。
+- 当前变化/边缘 logits 通常为 `2 x 256 x 256`。
+- 对比特征通道数：`phi='b0' -> 256`，`phi='b1' -> 512`。
+- 当前实验主配置下，`H=W=256`。
+
+36) 2026-05-24 SFEARNet 逐步数据流（新增）：
+- 输入图像：`[B, 3, 256, 256]`。
+- `backbone` 输出四级特征：`[B, 32, 64, 64]`, `[B, 64, 32, 32]`, `[B, 160, 16, 16]`, `[B, 256, 8, 8]`（`phi='b0'`）。
+- `Pyramid_Merge` 分别融合双时相对应层特征。
+- `Edge_Guidance_0/1` 输出边缘分支与增强特征。
+- `decode_head` 输出变化 logits，随后经 `re/re2` 得到最终 `x/edge`。
+- `feat1/feat2` 取自最深层特征并上采样到标签分辨率，用于对比损失。
+
+37) 2026-05-24 `feat1/feat2` 与 `x1/x2` 的关系（新增）：
+- `x1/x2` 是 backbone 对双时相输入返回的四级特征列表。
+- `feat1 = upsample(x1[3])`，`feat2 = upsample(x2[3])`。
+- 因此，`feat1/feat2` 只对应最深层特征（索引 3），并被上采样到输入分辨率。
+
+38) 2026-05-24 使用第4层特征做对比损失的判断（新增）：
+- 当前做法是合理的：对比损失只用 `x1[3]` / `x2[3]`（最深层特征）。
+- 原因：深层特征更偏语义，对标签引导的相似/不相似约束更匹配。
+- 注意：四个 backbone stage 分辨率不同，不能直接把整个 `x1/x2` 列表合并成一个对比输入；若要多尺度对比，需要另行设计每层单独分支。
+
+39) 2026-05-24 伪变化场景下的对比输入选择（新增）：
+- 当前建议继续使用第 4 层特征作为对比损失输入，而不是直接使用完整的 `x1/x2` 列表。
+- 伪变化问题更依赖语义级判别，深层特征通常比浅层纹理特征更稳健。
+- 若后续要扩展为多尺度对比，必须为每个尺度单独建分支，不能直接把不同分辨率特征混在一起。
+
+40) 2026-05-24 多尺度对比的结论（新增）：
+- 多尺度对比在理论上可能更强，但并不必然优于当前单层深层对比。
+- 当前场景下，深层主分支更稳，适合先作为默认方案。
+- 多尺度对比更适合作为后续消融实验候选，而不是直接替换现有实现。
+
+41) 2026-05-24 维护约定强化（新增）：
+- `PROJECT_PROGRESS.md` 和 `HANDOVER_PROMPT.txt` 必须在每一轮对话结束前自动维护。
+- 用户不需要重复提醒；该维护流程视为默认动作。
+
+42) 2026-05-24 第4层对比的结论边界（新增）：
+- 当前只用第4层是“推荐默认方案”，不是“已经证明一定最好”。
+- 该判断基于代码结构、语义层级和伪变化场景的经验分析。
+- 若后续做消融实验，multi-scale contrast 仍然应保留为对照候选。
+
+43) 2026-05-24 对比学习消融建议（新增）：
+- 消融时固定 backbone、optimizer、lr schedule、seed，只改对比分支本身。
+- 推荐对照组：
+  1. 无对比损失；
+  2. 仅第4层深层对比（当前默认）；
+  3. 仅浅层对比；
+  4. 多尺度对比（逐层单独投影后再计算）。
+- 指标建议：
+  - OA、F1、IoU、Precision、Recall；
+  - 若有伪变化样例，补充可视化对比。
+
+44) 2026-05-24 PCSE 创新点判断（新增）：
+- 用户提出 `PCSE`（Pseudo-change Suppression Enhancement Module）作为 PFEM 改进。
+- 该想法是合理的候选创新，因为它从“差异增强”转向“差异可靠性筛选”。
+- 但目前只能视为待验证方案，不能直接写成已确认有效的结论。
+- 最重要的可写亮点是 reliability gate，用于抑制光照、阴影、季节、配准误差等伪变化响应。
+
+45) 2026-05-24 代码修改回退安全流程（新增）：
+- 修改前默认先建实验分支，再做 checkpoint 提交（允许 WIP）。
+- 高风险改动前可额外导出 `git diff` 补丁作为离线回退备份。
+- 回退优先通过“切回 checkpoint 分支/提交”实现，避免临时慌乱操作。
+
+46) 2026-05-24 快照分支状态（新增）：
+- 已创建并切换到 `backup/pre-pcse-20260524`。
+- 后续 PCSE 改动建议先在此分支做一次 checkpoint 提交，再另开实验分支迭代。

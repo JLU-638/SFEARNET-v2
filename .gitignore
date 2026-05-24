@@ -5,4 +5,4 @@ model/model_data/
 logs/
 logs_of_shell/
 __pycache__/
-experiment_scripts/SFEARNet/LEVIR_CD_256/train_default.sh
+vis_beta_alg/

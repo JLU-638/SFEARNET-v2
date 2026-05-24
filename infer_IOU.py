@@ -8,16 +8,15 @@ import torch.utils.data
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import cv2
-from model.SFEARNet import SFEARNet
+from model.sfearnet import SFEARNet
 from data.Dataset import Dataset
-from train_options import parser
 from Metric import SegmentationMetric
 
-opt = parser.parse_args()
+
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 ###############需要改的部分
 
-save_dir = './visIOU/gz/'
+save_dir = './vis_beta_alg/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 
@@ -26,7 +25,8 @@ n_classes=2
 re=[]
 if __name__ == '__main__':
     ###############加载数据
-    DATA_DIR = opt.data_dir  # 根据自己的路径来设置
+    # DATA_DIR = opt.data_dir  # 根据自己的路径来设置
+    DATA_DIR = "data/datasets/LEVIR_CD_256"
     # print(DATA_DIR)
     test_dir_A = os.path.join(DATA_DIR, 'test/A')
     test_dir_B = os.path.join(DATA_DIR, 'test/B')
@@ -37,7 +37,7 @@ if __name__ == '__main__':
     test_dataset = Dataset(test_dir_A, test_dir_B, test_dir_label,test_dir_edge,is_train=False)
 
     test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
-    model = torch.load('LEVIR_CD_result_1/best_model/SFEARNet-0.0001-8-0.001-1-100/netCD_epoch.pth').to(device)
+    model = torch.load('/home/fengruyue/lvguixin/SFEARNet_test/logs/model_SFEARNet_data_LEVIR_CD_lr_0.0001_bs_8_wd_0.001_lam_1.0_ep_100_seed_0/run_2026-04-28_21-05-24/best_model/best_model.pth').to(device)
 
     model.eval()
     test_SegmentationMetric = SegmentationMetric(numClass=n_classes)

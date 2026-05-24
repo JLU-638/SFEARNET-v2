@@ -1,0 +1,1900 @@
+IEEE TRANSACTIONS ON GEOSCIENCE AND REMOTE SENSING, VOL. 63, 2025
+
+5402518
+
+SFEARNet: A Network Combining Semantic Flow
+and Edge-Aware Refinement for Highly Efficient
+Remote Sensing Image Change Detection
+Miao Li, Dongping Ming , Senior Member, IEEE, Lu Xu , Dehui Dong , and Yu Zhang
+Abstract— In change detection, the pseudovariations in the
+visual features of remote sensing (RS) images are attributed
+to imaging conditions, lighting, seasonal changes, atmospheric
+interference, and other factors. These pseudovariations yield
+a great challenge to change detection. The traditional change
+detection network usually suffers from upsampling information
+loss and blurred edges. Aiming at resolving the above problems,
+a semantic flow and edge-aware refinement network (SFEARNet)
+for highly efficient RS image change detection has been proposed.
+The pyramid feature enhancement module (PFEM) has been
+designed for the enhancement of differential information. The
+introduction of the semantic flow information transmission
+module (SFITM) enables the effective transmission and retaining
+of key information through semantic flow. An edge-aware
+refinement module (EARM) has been developed, designed to
+extract change edge and enhance the refinement effect of the
+edge. The experiments have been conducted on the LEVIR
+building change detection dataset (LEVIR-CD), WHU building
+dataset (WHU-CD), Google dataset (GZ-CD), and cropland
+change detection dataset (CLCD). In comparison with the
+existing methodologies, the experimental results demonstrate
+that SFEARNet attains the highest change detection accuracy
+and the smallest floating-point operations per second (FLOPs)
+while maintaining a similar number of parameters (Params).
+This enables more efficient change detection. In particular, the
+proposed method can effectively refine the edges of the change
+region, reduce the loss of upsampling information, and enhance
+differential feature extraction. This brings a new solution to the
+field of RS image change detection. The code is available at
+https://github.com/miao-0417/SFEARNet.
+Index Terms— Change detection, edge-aware, feature enhancement, remote sensing (RS), semantic flow.
+Received 15 July 2024; revised 14 October 2024 and 25 January 2025;
+accepted 23 February 2025. Date of publication 26 February 2025; date of
+current version 24 March 2025. This work was supported in part by the
+National Key Research and Development Program of China under Grant
+2022YFB3903604 and in part by the National Natural Science Foundation
+of China under Grant 42371379. (Corresponding author: Dongping Ming.)
+Miao Li, Dehui Dong, and Yu Zhang are with the School of Information
+Engineering, China University of Geosciences (Beijing), Beijing 100083,
+China (e-mail: 2004220023@email.cugb.edu.cn; dongdhcugb@163.com;
+3004230011@email.cugb.edu.cn).
+Dongping Ming is with the School of Information Engineering, China
+University of Geosciences (Beijing), Beijing 100083, China, also with
+the Hebei Key Laboratory of Geospatial Digital Twin and Collaborative
+Optimization, China University of Geosciences (Beijing), Beijing 100083,
+China, and also with the Frontiers Science Center for Deep-time Digital
+Earth, China University of Geosciences, Beijing 100083, China (e-mail:
+mingdp@cugb.edu.cn).
+Lu Xu is with the School of Information Engineering, China University
+of Geosciences (Beijing), Beijing 100083, China, and also with the Hebei
+Key Laboratory of Geospatial Digital Twin and Collaborative Optimization,
+China University of Geosciences (Beijing), Beijing 100083, China (e-mail:
+xlirs@email.cugb.edu.cn).
+Digital Object Identifier 10.1109/TGRS.2025.3545906
+
+I. I NTRODUCTION
+HANGE detection is an active research field in remote
+sensing (RS). By comparing the same area two or more
+times, differences in ground objects can be monitored. The
+differences can be compared with the help of image-processing
+techniques and mathematical models. Change detection is
+used in many fields. These include land cover and land use
+(LCLU) change [1], [2], [3], [4] and disaster assessment [5],
+[6], [7], [8]. An important branch of change detection is
+bitemporal change detection. In comparison with the widely
+known RS image interpretation approaches such as image
+classification [9], [10], [11], [12], [13], [14], [15], [16], target
+detection [17], [18], [19], [20], [21], [22], [23], [24], [25],
+[26], [27], [28], [29], and super-resolution reconstruction [30],
+[31], [32], [33], change detection is based on the analysis
+of bitemporal images. There is a further need to improve
+bitemporal change detection techniques due to the increase in
+data and the increasing complexity of land cover. Two aspects
+in the following should not be ignored.
+1) Information Maintaining During Upsampling: The network’s performance has been greatly influenced by the
+high-resolution feature. Low-resolution features contain
+rich semantic information. During the upsampling
+process, this information may become blurred or lost.
+Reducing information loss during upsampling becomes
+particularly important [34], [35], [36]. This article
+introduces semantic flow for information transfer. This
+method can reduce information loss and obtain a
+strongly semantically representative feature map.
+2) Edge Information Utilization: Edge information has a
+large impact on the accuracy. There are two main
+problems in current change detection based on edge
+information. The first one does not use real edge
+information for constraints [37], [38]. The second one
+uses real edge information, but the edge information
+shares a decoder with the change region information
+[39], [40], [41]. It is easy to cause incomplete extraction
+of the change area and create voids. A new decoder
+is proposed in this article. It uses the first and fourth
+layer features as a decoder for edge information. The
+preservation of the second and third layer features
+maintains integrity for change detection.
+With these factors in mind, this article presents a network
+called semantic flow and edge-aware refinement network
+(SFEARNet). SFEARNet comprises semantic flow and edgeaware refinement. The network architecture used is the
+
+C
+
+1558-0644 © 2025 IEEE. All rights reserved, including rights for text and data mining, and training of artificial intelligence
+and similar technologies. Personal use is permitted, but republication/redistribution requires IEEE permission.
+See https://www.ieee.org/publications/rights/index.html for more information.
+Authorized licensed use limited to: JILIN UNIVERSITY. Downloaded on February 24,2026 at 14:27:15 UTC from IEEE Xplore. Restrictions apply.
+
+5402518
+
+IEEE TRANSACTIONS ON GEOSCIENCE AND REMOTE SENSING, VOL. 63, 2025
+
+Siamese neural network. The SegFormer [42] structure is used
+for both the encoding and decoding parts of the network. Also,
+it builds on this foundation and includes improvements. First,
+a pyramid feature enhancement module (PFEM) is presented.
+This module can enhance the differential features. It integrates
+the original differential features, contextual features, and
+attention features. Moreover, a new module, known as the
+semantic flow information transmission module (SFITM), has
+been integrated into the decoder component of SegFormer
+to minimize the semantic information loss in the decoding
+stage. Therefore, to improve the edge awareness of the change
+detection network, an edge-aware refinement module (EARM)
+is introduced to focus more on the edges of the change region.
+This article makes the following contributions to knowledge.
+1) A Network Called SFEARNet Is Proposed in This
+Article: The network integrates semantic flow and edgeaware refinement. Three modules are presented in this
+article, namely PFEM, SFITM, and EARM. With the
+same level of parameter count, SFEARNet not only
+ensures detection accuracy but also achieves the highest
+efficiency. Therefore, SFEARNet represents an appropriate solution in the domain of RS image change detection.
+2) This Article Makes Extensive Use of Multiscale
+Features: In SFITM, it uses the transfer of semantic
+information between deep and shallow features to
+get high-resolution feature maps with high semantic
+information. In PFEM, contextual information can be
+captured at multiple scales using different dilation rates.
+PFEM can integrate original and enhanced features. The
+network is improved by the strategy of using multiscale
+features. There is also an increase in the accuracy and
+reliability of change detection.
+3) To Accurately Measure Change Boundaries, a New
+Decoder Component Is Introduced in EARM: This
+design not only effectively separates edge information
+from change region information but also enhances the
+network’s sensitivity and accuracy in identifying change
+boundaries. The module enables the capture of subtle
+changes in RS images with greater precision. This provides a solid foundation for the application in the field.
+The remaining sections are organized as follows. Section II
+provides a brief overview of related work. Section III presents
+the details of SFEARNet. Section IV provides a comparison
+with the current state of the art. Section V discusses the
+methodology. Section VI summarizes this entire article.
+II. R ELATED W ORKS
+Deep learning excels at identifying sophisticated images.
+The technology has a high recognition rate. It also
+improves timeliness and automation. The convolutional neural
+network (CNN) is a pivotal deep learning algorithm. CNNs
+have wide applications in RS and are used in change
+detection. Advanced techniques such as feature enhancement,
+minimizing information loss, and the use of edge information
+are more often used. The area of RS image change detection
+has been expanded.
+A. Deep Learning in RS
+RS data typically include satellite images, radar data, and
+more. These data are large and complex. Traditional methods
+
+often struggle to fully exploit the potential information within
+it. With the introduction of deep learning, the processing and
+interpretation of this data have been greatly enhanced.
+First, deep learning is used in the classification [43], [44],
+[45], [46] and segmentation [47], [48], [49], [50] of RS
+images. In classification, Ji et al. [43] proposed PASSNet.
+In segmentation, Chen et al. [47] proposed a coarse-to-fine
+task. Xu et al. [49] proposed RSSFormer. Second, deep
+learning is also widely used for target detection [26], [51],
+[52] and anomaly detection [23], [53], [54], [55]. A weakly
+supervised network was used by Han et al. [26]. Wang et al.
+[52] proposed FSoD-Net. Liu et al. [23] used an unsupervised
+anomaly network. Furthermore, deep learning is a crucial
+component in super-resolution reconstruction [56], [57], [58].
+Xiao et al. [56] proposed EdiffSR. Last but not least, deep
+learning has demonstrated considerable potential in the domain
+of change detection [59], [60], [61]. Tang et al. [59] proposed
+WNet. Yuan et al. [61] proposed MFGFNet.
+As deep learning algorithms improve, more and more
+uses will be found for it in RS. Especially in RS image
+change detection, deep learning will play its fast and efficient
+advantage to improve the efficiency.
+B. Minimize Information Loss in Change Detection
+One of the important issues in increasing accuracy is how
+to reduce information loss during the transmission process.
+Many scholars have put forward a variety of solutions to
+reduce the loss incurred during the transfer of information
+[34], [35], [36], [62], [63], [64]. Peng et al. [34] used a dense
+attention technique. This is achieved by multiple upsampling
+attention units. Fang et al. [35] used densely linked to reduce
+the question. Wang et al. [62] used distinct branches to
+combine feature maps of varied degrees. Gu et al. [63]
+combined the various levels of difference features through skip
+connection. Long et al. [36] proposed a high-level information
+refinement module. Wang et al. [64] introduced a structure
+with multiresolution parallel to fully utilize visual information
+at various resolutions.
+Although considerable progress has been made in recent
+years in reducing information loss, current research is still
+largely focused on optimizing network structures to mitigate
+information loss during network transmission. However,
+another significant source of information loss has been
+overlooked. The source is the loss of details during the
+upsampling process. It is essential to implement more effective
+solutions. In this article, the method of semantic flow is
+employed to refine the transmission of information across
+images of different resolutions, resulting in highly abstracted
+high-resolution feature maps.
+C. Feature Enhancement in Change Detection
+Feature enhancement represents a pivotal aspect. This assists
+computers in enhancing the understanding of spatial and
+hierarchical characteristics. Also, feature strengthening can be
+defined as a way to enhance the performance of a model [65],
+[66], [67], [68], [69], [70], [71], [72], [73], [74], [75], [76].
+Daudt et al. [65] proposed three topologies for a full CNN
+to extract deep information. Zhu et al. [66] added a feature
+
+Authorized licensed use limited to: JILIN UNIVERSITY. Downloaded on February 24,2026 at 14:27:15 UTC from IEEE Xplore. Restrictions apply.
+
+LI et al.: SFEARNet: A NETWORK COMBINING SEMANTIC FLOW AND EDGE-AWARE REFINEMENT
+
+comparison module (FCM). It is aimed at limiting channel
+numbers in feature fusion. A hybrid convolutional module
+was used by Wang et al. [67]. Li et al. [68] used multiscale
+convolution kernels. Features of ground object elements can be
+detailed using the different kernels. Chen et al. [69] enabled
+the efficient and effective modeling of situations within the
+spatial–temporal domain. Li et al. [70] learned the global
+context with transformer. Zhang and Shi [71] used a network
+with deep feature difference convolutional. Du et al. [72]
+proposed ESDSCNet with enhanced shallow feature difference
+and semantic context. Song et al. [73] incorporated local and
+global data from CNN and branch fusion in two directions.
+Wang et al. [75] proposed MTCNet. Bandara and Patel [76]
+proposed ChangeFormer. Liu et al. [74] proposed MSCANet.
+Both of them modeled long-range context information.
+Considering feature enhancement is crucial when studying
+and analyzing areas of change. It can significantly improve the
+accuracy of identifying and understanding regional changes.
+Feature enhancement can highlight or amplify specific
+image or data features, making the change regions more
+pronounced. It becomes easier to detect and analyze. This
+article integrates the original differential features, differential
+contextual features, and differential attention features. This can
+improve the model’s performance. Integrating these features
+helps understand complex regions better.
+D. Edge Information in Change Detection
+Edge information can be utilized as an auxiliary feature.
+Edge information is employed to identify changes in the
+boundaries and contours of objects. The edge can aid in
+the identification of the location and extent of changes in
+objects [37], [40], [41], [77], [78], [79]. Xiang et al. [40]
+used multimodal transformers that include edge guidance.
+Zhang et al. [77] introduced a module for preserving object
+integrity and compactness. Wang et al. [41] proposed a
+super-pixel module to create edges. Xia et al. [78] proposed
+an edge detection branch (EDB). Bai et al. [37] combined
+discriminative information and edge structure. Zhu et al. [79]
+introduced edge-aware and edge-guidance feature modules.
+It is necessary to find change regions, and for this, accurate
+edge information is a basic requirement. The correct edge
+information can always describe and define the margins
+of the desired regions with great detail. Hence, effectively
+and efficiently obtaining the edge information has become
+vital for the change detection operation. In this article, the
+difference between the predicted and real edge information
+has been calculated through dice loss. It has helped enhance
+the extraction of edge information in change regions.
+In summary, the enhancement of neural network technology
+in the recent past has seen the improvement of RS image
+change detection. Feature enhancement, reducing information
+loss, and incorporating edge information have been widely
+used and are still on the rise. These enhancements have not
+only refined the detection of changes but also increased the
+reliability and flexibility of the system. With the progress of
+technology, RS image change detection will go further to a
+more intelligent and precise level.
+
+5402518
+
+III. M ETHODOLOGY
+This section is dedicated to the introduction of the
+methods utilized in the article. An initial summary of the
+combining semantic flow and edge-aware refinement network
+(SFRARNet) is provided. This is followed by a more detailed
+description of PFEM, SFITM, and EARM. Finally, the lose
+function is displayed.
+A. Overall Structure of SFEARNet
+SFEARNet is based on the SegFormer architecture. The
+achievement of this objective is made by means of PFEM,
+SFITM, and EARM. The overall network framework is a
+Siamese network. SFEARNet is illustrated in Fig. 1. The
+network uses SegFormer’s encoder, the MixTransformer. The
+MixTransformer is the core feature extraction module.
+Initially, two RS images of an area, captured at disparate
+points in time, are fed into the shared-weight encoder. This
+process yields feature vectors, designated as Fi and f i , where
+i is the level of the feature vector. Subsequently, feature
+vector pairs (Fi , f i ), derived from different RS images and
+at the same level, are transmitted to PFEM. Following PFEM
+processing, an enhanced feature representation, designated
+FPFEMi , is generated.
+Subsequently, EARM is applied, comprising two stages.
+In stage one, the most representative feature scales FPFEM1
+and FPFEM4 are selected. They are inputs for subsequent
+processing within EARM. This module employs a distinctive
+edge-awareness mechanism to refine edge information. This
+facilitates the network’s ability to discern a more accurate
+edge. The output edges generated by EARM are evaluated
+with the ground-truth edges through the calculation of loss
+functions. This process serves to enhance the capability of
+edge recognition while also improving the accuracy of edge
+information extraction. In stage two, the edge information
+generated by EARM acts on FPFEMi . Here, the resolution
+of edge information is adjusted through max pooling to
+refine FPFEMi and obtain a more refined feature representation,
+FEARMi .
+Finally, the refined features FEARMi are transmitted to the
+SegFormer decoder. To improve the precision of generated
+images, the conventional bilinear interpolation upsampling
+technique employed within the SegFormer framework has
+been superseded by SFITM. SFITM module enhances the
+generation of large-scale RS images, thus optimizing the
+network’s overall performance.
+B. Semantic Flow Information Transmission Module
+It is very important to get feature maps with high resolution
+and strong semantic representation for improving performance.
+The upsampling module plays an important role in change
+detection. Traditional upsampling methods, such as bilinear
+interpolation, can generate relatively smooth results in the
+process of processing. It is inevitable that such methods will
+result in some details getting lost. Inspired by the literature
+[80], this article proposes an SFITM, as shown in Fig. 2.
+This module preserves the details of the original images
+well. It maximizes the retention and transmission of key
+
+Authorized licensed use limited to: JILIN UNIVERSITY. Downloaded on February 24,2026 at 14:27:15 UTC from IEEE Xplore. Restrictions apply.
+
+5402518
+
+IEEE TRANSACTIONS ON GEOSCIENCE AND REMOTE SENSING, VOL. 63, 2025
+
+Fig. 2.
+
+Fig. 1.
+
+Framework of SFEARNet.
+
+details within the images. A multiscale feature integration
+strategy is also employed. This strategy makes full use of
+information from feature maps with different resolutions. The
+core of this module lies in the information transmission
+based on semantic flow. The semantic representativeness
+of deep features is preserved. This makes it possible
+to obtain high-resolution features with strong semantic
+representation. Semantic information is transmitted between
+different resolutions. The integration of multiscale features has
+been achieved.
+First, given two levels of input feature maps FlHl ×Wl ×Cl (deep
+H ×W ×C
+feature) and F p p p p (shallow feature), the resolution of
+H ×W ×C
+
+H ×W ×C
+
+Fl p p p is equal to that of F p p p p by bilinear
+upsampling, as shown in (1). Two feature maps are
+concatenated. Then, they are convolved with a kernel size of
+3 × 3 with two filters. A semantic flow field 1p is
+predicted, as shown in (2). The size of the semantic flow field
+is H p × W p × 2. Each element in the flow field corresponds
+to an offset, which represents the positional offset of each
+position in the previous level in the current level, and the
+formulas are given as follows:
+
+
+H ×W ×C
+Fl p p p = Bilinear Upsample FlHl ×Wl ×Cl
+(1)
+
+
+
+H ×W ×C
+H ×W ×C
+1p = Conv3×3 Concat Fl p p p , F p p p p
+(2)
+
+Framework of SFITM.
+
+where H denotes the length, W denotes the width, C
+denotes the number of channels, and Conv3×3 represents
+3 × 3 convolutions.
+Next, after obtaining the semantic flow field, each position
+f p of the previous level is mapped to a position fl of
+the current level, as shown in (3). After mapping, linear
+interpolation of the current level feature map is used to obtain
+the final feature map F. This process uses a differentiable
+bilinear sampling mechanism, as shown in (4). By adding it
+with the results of Fl bilinear upsampling above, the output
+FSFITM of the module is obtained, as shown in (5). The
+formulas are given as follows:
+1p( f p )
+fl = f p +
+2
+X
+F=
+ω′f Fl ( fl′ )
+
+(3)
+(4)
+
+f ′ ∈N( f l)
+
+
+
+FSFITM = F + Bilinear Upsample FlHl ×Wl ×Cl
+
+(5)
+
+where ω′f denotes the bilinear interpolation weights and N( f l)
+represents neighbors of the warped points fl in Fl
+In this article, SFITM is utilized to replace the traditional
+bilinear interpolation upsampling method. The warp operation
+can perform geometric transformations on images. It can
+spatially align an image with another image taken at a
+different point in time. Bilinear interpolation is an image
+resampling technique. It is used to adjust the image resolution.
+By combining the warp operation with bilinear interpolation,
+the advantages of both processing methods can be integrated.
+SFITM preserves the spatial alignment information of the
+image. It also maintains a high resolution. This aids in
+subsequent change detection tasks. SFITM allows for a more
+accurate restoration of image detail. This helps to improve the
+model’s perception. Ultimately, it improves the accuracy and
+precision of change detection.
+
+Authorized licensed use limited to: JILIN UNIVERSITY. Downloaded on February 24,2026 at 14:27:15 UTC from IEEE Xplore. Restrictions apply.
+
+LI et al.: SFEARNet: A NETWORK COMBINING SEMANTIC FLOW AND EDGE-AWARE REFINEMENT
+
+C. Pyramid Feature Enhancement Module
+Accurately measuring the differences between bitemporal
+features is crucial. Traditional methods often rely on simple
+difference calculations. This leads to the extraction of
+ambiguous differences in features. The contextual information
+associated with the difference features is not sufficiently
+preserved. The PFEM, as shown in Fig. 3, is proposed
+to overcome this limitation. The module uses a multiscale
+fusion strategy. First, it preserves the original differential
+features. Next, dilated convolution is introduced in the feature
+enhancement stage, allowing contextual data to be processed
+at various scales using different dilation rates. Finally,
+an attention mechanism is used to enhance features from
+two branches. The module integrates the original differential
+features, contextual features, and attention features.
+The receptive fields of dilated convolutions with different
+dilation rates exhibit a pyramid-like structure. Therefore,
+this module is aptly named the PFEM, reflecting its unique
+advantages in multiscale feature extraction. Through precise
+operations, this module not only preserves the integrity of the
+original features but also accurately extracts and significantly
+enhances the differential features. This ensures the effective
+utilization and accurate analysis of differential features in the
+change detection process. The process is given as follows.
+On the one hand, on the bitemporal features Fc and Fc ,
+where c is the channel number, a difference calculation is
+performed. This method captures the differences between
+the feature values of bitemporal images. This study draws
+inspiration from the ASPP module in DeeplabV3+ [81].
+A multiscale dilated convolution method is hereby introduced
+with a view to capturing contextual information from changing
+regions at different scales. This article uses the 1 × 1
+convolution for original feature extraction, resulting in F1×1
+as shown in (6). In addition, four parallel dilated 3 × 3
+convolutions with different dilation rates (d = 1, 2, 3, 4)
+are used. Contextual features can be extracted from the
+d,c
+different dilation rates. This method results in F3×3
+, as shown
+in (7). This approach maintains the spatial integrity of the
+convolutional features while capturing regions of varying sizes
+using different receptive fields. Subsequently, the multiscale
+contextual features are concatenated, and 1 × 1 convolution
+is employed to downsample the channel, resulting in Fcat ,
+as shown in (8). Then, add Fcat to the original difference
+features, resulting in Fadd , as shown in (9). This process
+retains the original features with richer context information,
+enhancing the features effectively. The formulas are given as
+follows:
+F1×1 = Conv1×1 (abs(FC − f C ))
+
+(6)
+
+d,c
+F3×3
+= Convd,c
+3×3 (abs(FC − f C )),
+
+d ∈ 1, 2, 4, 8
+(7)
+
+
+d,c
+Fcat = Conv1×1 Concat F1×1 , F3×3 , d ∈ 1, 2, 4, 8 (8)
+
+
+Fadd = Fcat + abs(FC − f C )
+
+(9)
+
+where d is the dilation rate, c is the number of channels,
+Conv1×1 represents 1 × 1 convolution, and abs represent
+the absolute. Convd,c
+3×3 represents 3 × 3 convolutions with
+
+5402518
+
+the dilation rates and channel numbers. Concat represents
+concatenation.
+On the other hand, the features from these two phases
+are concatenated. The information in the bitemporal features
+(Fc , f c ) can be fully exploited. The feature information of the
+original bitemporal image is also retained. This concatenation
+2×c
+2×c
+results in Fcat
+, as shown in (10). Fcat
+is sent to the channel
+and spatial attention. The attention is named convolutional
+block attention module (CBAM) [82]. CBAM enables the
+model to perceive key information with greater efficacy. It is
+worth noting that CBAM can significantly improve network
+performance without increasing network complexity. After the
+feature is processed by CBAM, 1 × 1 convolution is used
+for channel downsampling to optimize the feature expression
+resulting in Fconv , as shown in (11). Subsequently, this article
+adds the downsampled features to Fadd . Fadd represents the
+different features processed and enhanced by multiscale dilated
+convolution. This addition results in FPFEM , as shown in (12).
+The objective is to integrate the different features from the
+original image features. It can use the original image’s feature
+information. This process can improve SFEARNet’s change
+accuracy. The formulas are given as follows:
+2×c
+Fcat
+= Concat(Fc , f c )
+
+Fconv = Conv1×1 CBAM
+FPFEM = Fconv + Fadd
+
+(10)
+2×c
+Fcat
+
+
+
+(11)
+(12)
+
+where CBAM stands for the convolutional block attention
+module. c is the number of channels.
+Differential features are enhanced using PFEM. PFEM
+uses a multiscale pyramid structure. The use of dilation
+convolutions with different dilation rates is a necessary
+step. The different information of change regions can be
+captured and enhanced. At the same time, the original
+features of the bitemporal images are concatenated. Then, the
+CBAM attention mechanism is applied. The enhanced change
+detection features are obtained by adding the features obtained
+from these two methods. The module combines the original
+differential, contextual, and attention features. PFEM enhances
+the model’s detection accuracy.
+D. Edge-Aware Refinement Module
+Edges are fundamental visual elements in images, containing object shapes and contours. The incorporation of edge
+features is a pivotal aspect of deep learning visual models,
+exerting a considerable influence on image comprehension
+and model efficacy. In designing and training deep learning
+models, efficiently and accurately extracting and utilizing edge
+information are crucial. Inspired by the existing literature [83],
+this article proposes an EARM, as shown in Fig. 4. This
+module aims to extract and optimize edges of the changing
+region, using this edge information to refine network features.
+In this module, a decoder is proposed. It is used to identify
+and precisely extract edge information of the changing regions
+in the image. The decoder primarily utilizes shallow and deep
+features from the network structure. This allows decoders to
+take advantage of both shallow features in terms of detail and
+deep features in terms of semantics. It can locate the edges of
+
+Authorized licensed use limited to: JILIN UNIVERSITY. Downloaded on February 24,2026 at 14:27:15 UTC from IEEE Xplore. Restrictions apply.
+
+5402518
+
+Fig. 3.
+
+IEEE TRANSACTIONS ON GEOSCIENCE AND REMOTE SENSING, VOL. 63, 2025
+
+Framework of PFEM.
+
+changing regions. This decoder overcomes the limitations of
+single feature layers in edge detection by combining features
+from different layers. It achieves higher accuracy in complex
+change detection.
+Edge information is extracted using the Sobel edge detection
+operator. The calculation process is shown in (13)–(17). This
+is followed by threshold segmentation to extract the edges of
+changed objects, with the threshold value set to 20, as shown
+in (18). This module is divided into two stages. Stage 1
+involves the extraction and optimization of edge information.
+Stage 2 uses this edge information to refine the features
+
+
+−1 0 1
+Sx (i, j) = −2 0 2
+(13)
+−1 0 1
+Gx =
+
+1 X
+1
+X
+
+I (x + i, y + j) · Sx (i, j)
+
+(14)
+
+i=−1 j=−1
+
+
+−1
+Sy (i, j) =  0
+1
+Gy =
+
+−2
+0
+2
+
+1 X
+1
+X
+
+
+−1
+0
+1
+
+I (x + i, y + j) · Sy (i, j)
+
+(15)
+
+(16)
+
+i=−1 j=−1
+
+G=
+
+q
+
+G 2x + G 2y
+
+(17)
+
+where Sx (i, j) denotes the horizontal direction gradient
+operator. Sy (i, j) is the operator for the vertical gradient.
+I (x, y) is the pixel value of the image at the location (x, y).
+G x is the horizontal gradient. G y is the vertical gradient. G is
+the magnitude of the gradient
+(
+255, if input(x, y) > 20
+output(x, y) =
+(18)
+0,
+if input(x, y) ≤ 20
+where input(x, y) is the pixel value.
+
+Hs ×Ws ×Cs
+In Stage 1, the shallow and deep features FPFEM
+Hd ×Wd ×Cd
+and FPFEM
+are enhanced by PFEM. Perform a 3 × 3
+convolution on deep features and shallow features to obtain
+Hs ×Ws ×Cs
+Hd ×Wd ×Cd
+Fconv
+and Fconv
+, as shown in (19) and (20). Shallow
+features are effective at capturing detail information in images,
+such as edges. Deep features can capture high-level semantic
+information, such as categories. The shallow features here use
+the first-layer features. The deep features here use the fourthlayer features. This enables the concurrent utilization of the
+edge information contained within first-layer features and the
+category information embedded within fourth-layer features.
+Use SFITM to adjust the resolution of deep features to
+match that of shallow features. Concatenate the deep features
+Hs ×Ws ×Cs
+after SFITM with the shallow features to obtain Fcat
+,
+as shown in (21), to create a rich feature representation.
+Double convolution is performed on the concatenated features
+to further extract and emphasize the edge features of the
+Hs ×Ws ×Cs
+changing region, resulting in Fedge
+, as shown in (22).
+This series of fine operations aims to accurately identify the
+changing regions in the image and assign higher weights to
+their edge information. The corresponding formulas are given
+as follows:
+
+
+Hs ×Ws ×Cs
+Hs ×Ws ×Cs
+Fconv
+= Conv3×3 FPFEM
+(19)
+
+
+Hd ×Wd ×Cd
+Hd ×Wd ×Cd
+Fconv
+= Conv3×3 FPFEM
+(20)
+
+Hs ×Ws ×Cs
+Hs ×Ws ×Cs
+Hd ×Wd ×Cd
+Fcat
+= Concat Fconv
+, SFITM Fconv
+(21)
+
+Hs ×Ws ×Cs
+Hs ×Ws ×Cs
+Fedge
+= Conv3×3 Conv3×3 Fcat
+(22)
+
+where H stands for the length, W stands for the width, C
+stands for the number of channels, and SFITM represents the
+semantic flow information transmission module.
+In Stage 2, the edge information is used to refine the
+output features of PFEM. On the abovementioned edge
+information, a maximum-pooling operation is performed.
+H ×W ×C
+It results in Fedge-feature
+, as shown in (23). Maximum pooling
+can extract edge features that are most significant. The
+feature values output from PFEM are multiplied by this
+pooled edge information on an element-by-element basis.
+The representation of the edge is directly improved by this
+procedure. The result of the multiplication is added to the
+values of the original characteristics. It is able to preserve
+the nonedge information in the original features. The method
+H ×W ×C
+gets Fedge-correction
+, as shown in (24). This step ensures that
+the edge information is effectively enhanced, while other
+important information in the original features is also preserved.
+Finally, the edge-enhanced features are passed into the CBAM
+attention mechanism. CBAM can further focus on the key
+channels and spatial positions in the feature map, thereby
+obtaining the features after edge refinement resulting in FESGM ,
+as shown in (25). These feature values not only contain
+rich edge information but also enhance key regions in the
+image through the attention mechanism. This results in a more
+accurate and more robust representation of the features. The
+specific calculation formulas are given as follows:
+
+
+Hl ×Wl ×Cl
+H ×W ×C
+Fedge-feature
+= MaxPool Fedge
+(23)
+
+Authorized licensed use limited to: JILIN UNIVERSITY. Downloaded on February 24,2026 at 14:27:15 UTC from IEEE Xplore. Restrictions apply.
+
+LI et al.: SFEARNet: A NETWORK COMBINING SEMANTIC FLOW AND EDGE-AWARE REFINEMENT
+
+5402518
+
+given as follows:
+N −1
+
+L ce = −
+
+1 X
+yn log (xn )
+N n=0
+
+(26)
+
+|A ∩ B|
+(27)
+|A ∪ B|
+2 × |A ∩ B|
+L Dice = 1 −
+(28)
+|A| + |B|
+L total = L(GTlabel , prelabel ) + L(GTlabel , prelabel )
++ L(GTedgelabel , preedge )
+(29)
+
+L Jaccard = 1 −
+
+where L ce denotes the CE loss. L Jaccard denotes the Jaccard
+loss. L Dice denotes the dice loss. x is the input value. y is
+the label value. N is the number of categories. |A| and |B|
+indicate the numbers of elements A and B. GT represents the
+ground truth, and Pre represents predictions.
+IV. E XPERIMENTS AND R ESULTS
+The SFEARNet is compared with the most advanced
+network models in detail on four datasets. This series of
+experiments has been designed to verify the advantages and
+effectiveness of SFEARNet.
+
+Fig. 4.
+
+Framework of EARM.
+H ×W ×C
+H ×W ×C
+H ×W ×C
+H ×W ×C
+Fedge-refine
+= Fedge-feature
+× FPFEM
++ FPFEM
+
+
+H ×W ×C
+FESGM = CBAM Fedge-refine
+
+(24)
+(25)
+
+where H denotes the length, W denotes the width, and C
+denotes the number of channels. MaxPool represents the max
+pooling.
+This article proposes an EARM that utilizes both shallow
+and deep features to accurately extract edge information.
+More importantly, this edge information is applied to the
+feature values at different stages to enhance their refinement.
+This strategy is particularly crucial in change detection
+tasks, producing more accurate and detailed change detection
+outcomes.
+
+E. Loss Function
+EARM is crucial to the network structure. The accuracy of
+the edges is directly influenced by this factor. This, in turn,
+has a profound impact on the subsequent extraction of deep
+change features. Dice loss is used to ensure that the training
+phase produces precise boundary prediction information by the
+use of original edge data.
+The cross-entropy (CE) and Jaccard losses are calculated
+for the label predictions and the ground-truth values. This
+evaluation assesses the model’s performance in predicting
+categories.
+In conclusion, the total loss is a combination of CE, Jaccard,
+and dice losses. This is designed to improve the accuracy of
+detecting edges and predicting categories. The formulas are
+
+A. Datasets
+LEVIR building change detection dataset (LEVIR-CD)
+[84], WHU building dataset (WHU-CD) [85], Google dataset
+(GZ-CD) [86], and cropland change detection dataset (CLCD)
+[74] datasets are used for the experiments.
+1) LEVIR-CD [84]: The dataset was acquired from Google
+Earth. It has a resolution of 0.5 m. The image size is
+1024 × 1024. Notable changes have been observed in
+the land use patterns, particularly within the construction
+industry. The types of changes cover various types of
+buildings. In this experiment, the size is reduced to
+256 × 256, with a nonoverlapping cut. The dataset is
+divided into a training set/validation set/test set, with a
+size of 7120/1024/2048.
+2) WHU-CD [85]: A pair of bitemporal aerial photographs
+comprise the dataset. The resolution is 0.2 m. The size
+is 32 507 × 15 354. These images cover areas where
+earthquakes have occurred and have been reconstructed
+for many years, with the majority of the data about
+the reconstruction of buildings. The dataset is cut to
+256 × 256 with nonoverlapping. The training set, the
+validation set, and the test set are divided according to
+a ratio of 8:1:1, with a size of 6096/762/762.
+3) GZ-CD [86]: The data collection period is 2006–2019.
+The spatial resolution is 0.55 m. The size range is from
+1006 × 1168 to 4936 × 5224 pixels. The image has
+been cut into nonoverlapping 256 × 256 pixel squares.
+The training set, the validation set, and the test set were
+divided according to a ratio of 8:1:1, with a size of
+2882/361/360.
+4) CLCD [74]: These data were collected in 2017 and
+2019. The data are from Gaofen-2. Spatial resolution
+ranges from 0.5 to 2 m. A 512 × 512 bitemporal image
+and a binary label are used for each sample set. In total,
+there are 600 pairs of variation images. The CLCD’s
+
+Authorized licensed use limited to: JILIN UNIVERSITY. Downloaded on February 24,2026 at 14:27:15 UTC from IEEE Xplore. Restrictions apply.
+
+5402518
+
+IEEE TRANSACTIONS ON GEOSCIENCE AND REMOTE SENSING, VOL. 63, 2025
+
+labeled types mainly include cropland change. In the
+application, it is cropped to 256 × 256 size. The total
+size of the training set, the validation set, and the test
+set is calculated to be 1440/480/480.
+B. Evaluation Indicators
+To verify the proposed network performance, this article
+uses six indicators to evaluate the similarity between the
+predicted results and the real values. These are precision (Pre),
+recall (Rec), F1 score (F1), intersection over union (IOU),
+overall accuracy (OA), and kappa coefficient (Kappa). The
+indicators are defined as follows:
+TP + TN
+(30)
+OA =
+TP + TN + FP + FN
+TP
+Pre =
+(31)
+TP + FP
+TP
+Rec =
+(32)
+TP + FN
+2 × Pre × Rec
+F1 =
+(33)
+Pre + Rec
+TP
+IOU =
+(34)
+TP + FP + FN
+(TP + FP) × (TP + FN)
+pe =
+(TP + TN + FP + FN)2
+(FN + TN) × (FP + TN)
++
+(35)
+(TP + TN + FP + FN)2
+OA − pe
+Kappa =
+(36)
+1 − pe
+where TP, FP, TN, and FN are the number of true positive,
+false positive, true negative, and false negative samples.
+C. Comparative Experiment
+SFEARNet is compared with several state-of-the-art bitemporal change detection networks. These include pure CNN networks, attention-based networks, CNN-transformer networks,
+pure transformer networks, and edge-based networks. Pure
+CNN models include fully convolutional early fusion (FC-EF)
+[65], FC-Siam-conc [65], and FC-Siam-diff [65]. Attentionbased networks include STANet [84], difference enhancement
+and spatial–spectral nonlocal (DESSN) [87], and efficient
+ultralightweight spatial–spectral feature cooperation (USSFC)
+[88]. CNN-transformer networks include bitemporal image
+transformer (BIT) [69], MSCANet [74], and AMTNet [89].
+Pure transformer network includes ChangeFormer [76]. Edgebased network includes EATDer [39]. Through a comparison
+with these methods, the advantages and the effectiveness of
+SFEARNet can be evaluated in a more precise way.
+1) FC-EF [65]: The network used an early fusion category.
+The images from different phases are superimposed on
+the channel. The superimposed image is sent to the
+network for training and learning differences.
+2) FC-Siam-Conc [65]: This is an intuitive way. The
+network uses a Siamese structure. During the decoding
+steps, the features are concatenated in two skip
+connections.
+3) FC-Siam-Diff [65]: To be different with FC-Siam-conc,
+the absolute value of two different images has been
+concatenated.
+
+4) STANet [84]: The study is based on a spatial–temporal
+attention module. The spatial–temporal attention module
+consists of the basic spatial–temporal attention module
+and the pyramid spatial–temporal attention module.
+5) BIT [69]: The network proposed a bitemporal image
+transformer. It expressed images in a few tokens.
+Finally, it used a transformer encoder.
+6) ChangeFormer [76]: The transformer-based network
+and the unified transformer encoder with multilayer
+perception decoder.
+7) MSCANet [74]: It is a CNN-transformer network. The
+network utilized a CNN-based feature extractor and
+a transformer-based multiscale context aggregation.
+In addition, it employed a multibranch prediction
+head.
+8) DESSN [87]: The network is based on difference
+enhancement and spatial–spectral nonlocal. The
+network is comprised of three distinct modules. These
+modules are the difference enhancement module, the
+spatial–spectral nonlocal module, and the asymmetric
+double convolution with ghost module.
+9) AMTNet [89]: An attention-based multiscale transformer
+network using a CNN transformer structure. To model
+contextual information, the network uses attention and
+transformer models. The network also uses feature
+sharing to bridge the domain gap.
+10) USSFC
+[88]:
+An
+efficient
+ultralightweight
+spatial–spectral feature cooperation network. The
+network used multiscale decoupled convolution and
+spatial–spectral feature cooperation strategies.
+11) EATDer [39]: EATDer named edge-assisted adaptive
+transformer detector. It is a Siamese network with an
+edge-aware decoder. In each Siamese branch, it has
+three self-adapting vision transformer blocks. Full-range
+fusion modules connect two branches.
+On each dataset, this article uses official code to reproduce
+as much as possible. In order to make the analysis more
+comprehensive, this article evaluates the performance of
+SFEARNet in SegFormer encoder, MixTransformer-b0.
+D. Implementation Details
+The proposed SFEARNet and all baseline models are
+implemented using PyTorch in this article. Training is
+performed on an NVIDIA GeForce ray tracing texel extreme
+(RTX) 3090 graphics processing unit (GPU). The input size
+was set to 256 × 256 pixels. The batch size was 8. The
+initial learning rate was set to 1e−4 . The ReduceLROnPlateau
+strategy was employed to adjust the learning rate, having a
+factor of 0.5 and patience of 6 epochs. Model parameters
+(Params) were optimized using the AdamW optimizer with
+a weight decay of 1e−3 . Various methods were applied to
+the input data during training, including random rotation,
+horizontal flipping, vertical flipping, and bitemporal phase
+exchange. All the methods are data augmentation operations.
+The SFEARNet model was trained for 100 epochs. During the
+testing phase, no data augmentation techniques were used, and
+only test data were utilized for evaluation.
+
+Authorized licensed use limited to: JILIN UNIVERSITY. Downloaded on February 24,2026 at 14:27:15 UTC from IEEE Xplore. Restrictions apply.
+
+LI et al.: SFEARNet: A NETWORK COMBINING SEMANTIC FLOW AND EDGE-AWARE REFINEMENT
+
+5402518
+
+Fig. 5. Visualization comparisons on the LEVIR-CD dataset. (a) T1 image. (b) T2 image. (c) FC-EF. (d) FC-Siam-Conc. (e) FC-Siam-Diff. (f) STANet.
+(g) BIT. (h) MSCANet. (i) DESSN. (j) ChangeFormer. (k) AMTNet. (l) USSFC. (m) EATDer. (n) SFEARNet. (o) Ground truth. White indicates true positive.
+Black indicates true negative. Red indicates false positive. Green indicates false negative.
+
+E. Experimental Results
+The accuracy of LEVIR-CD, WHU-CD, GZ-CD, and
+CLCD is compared with advanced methods. It can assess
+the effectiveness of the proposed SFEARNet, as illustrated
+in Tables I–IV. This article presents SFEARNet predictions
+and existing methods visually. It can be seen in Figs. 5–8.
+The diagrams offer a direct representation of the method’s
+performance.
+Compared to several existing methods, SFEARNet shows a
+good performance on the LEVIR-CD dataset. This is shown
+in Table I. In four key metrics, OA, F1, IOU, and Kappa,
+SFEARNet achieves the highest scores. SFEARNet improves
+IOU by 0.57, 1.87, 1.55, and 2.07 percentage points relative
+to AMTNet, ChangeFormer, EATDer, and BIT. Meanwhile,
+SFEARNet improves F1 by 0.93, 0.34, and 1.12 percentage
+points compared to EATDer, AMTNet, and ChangeFormer.
+In addition, a visual comparison between SFEARNet and other
+methods is presented, as shown in Fig. 5. When dealing with
+changing objects of different sizes, SFEARNet shows excellent
+performance. SFEARNet is particularly sensitive to object
+edges when detecting large changes and can accurately capture
+boundary information. In addition, SFEARNet effectively
+detects changes in dense roofs. Compared to other methods,
+SFEARNet not only captures the general outline of small
+buildings during change detection but also retains more
+complete detailed information. The result is a more precise
+delineation of the areas of change.
+SFEARNet is compared with other methods on the WHUCD dataset. It can be seen in Table II. SFEARNet performs
+best in the five main metrics. These are Rec, OA, F1, IOU,
+and Kappa. Specifically, SFEARNet improves IOU by 0.72,
+2.92, and 3.01 percentage points relative to AMTNet, BIT,
+and MSCANet. Meanwhile, SFEARNet achieves 2.19, 7.27,
+and 8.72 percentage points’ improvement in IOU compared to
+BIT, USSFC, and EATDer. Meanwhile, SFEARNet achieves
+
+TABLE I
+Q UANTITATIVE R ESULTS (%) FOR THE LEVIR-CD DATASET.
+B OLD VALUES A RE B EST
+
+TABLE II
+Q UANTITATIVE R ESULTS (%) FOR THE WHU-CD DATASET.
+B OLD VALUES A RE B EST
+
+0.42, 1.72, and 4.84 percentage points’ improvement in
+F1 compared to AMTNet, BIT, and USSFC. A visual
+comparison between SFEARNet and other methods on the
+WHU-CD is shown in Fig. 6. SFEARNet achieves satisfactory
+results in large change regions, irregular change regions, and
+small to medium change regions. This result further validates
+the superior performance of SFEARNet.
+
+Authorized licensed use limited to: JILIN UNIVERSITY. Downloaded on February 24,2026 at 14:27:15 UTC from IEEE Xplore. Restrictions apply.
+
+5402518
+
+IEEE TRANSACTIONS ON GEOSCIENCE AND REMOTE SENSING, VOL. 63, 2025
+
+Fig. 6. Visualization comparisons on the WHU-CD dataset. (a) T1 image. (b) T2 image. (c) FC-EF. (d) FC-Siam-Conc. (e) FC-Siam-Diff. (f) STANet.
+(g) BIT. (h) MSCANet. (i) DESSN. (j) ChangeFormer. (k) AMTNet. (l) USSFC. (m) EATDer. (n) SFEARNet. (o) Ground truth. White indicates true positive.
+Black indicates true negative. Red indicates false positive. Green indicates false negative.
+TABLE III
+Q UANTITATIVE R ESULTS (%) FOR THE GZ-CD DATASET.
+B OLD VALUES A RE B EST
+
+TABLE IV
+Q UANTITATIVE R ESULTS (%) FOR THE CLCD DATASET.
+B OLD VALUES A RE B EST
+
+A quantitative presentation is provided for the SFEARNet
+method and existing methods in the performance of GZ-CD.
+The results can be found in Table III. The results demonstrate
+that SFEARNet attains the highest scores on all six principal
+indicators. Specifically, SFEARNet improves the IOU by
+0.93, 7.56, and 9.17 percentage points compared to AMTNet,
+EATDer, and STANet. Moreover, SFEARNet outperforms
+AMTNet and EATDer by 0.57 and 4.79 percentage points,
+respectively, in terms of F1. This article presents a comparative analysis of SFEARNet and alternative methods using the
+GZ-CD dataset. This is illustrated in Fig. 7. In refining the
+edges of large change areas, it can be seen that SFEARNet
+shows remarkable performance. For regions with irregular
+boundaries, SFEARNet also demonstrates higher recognition
+accuracy. Although there are some missed detections in
+medium- and small-scale change areas, SFEARNet can still
+accurately identify the change regions and retain more detailed
+information.
+
+This article compares the performance of SFEARNet on
+the CLCD dataset in both qualitative and quantitative terms.
+It can be seen in Table IV and Fig. 8. Of the quantified
+findings, SFEARNet scored highest on five measures: OA,
+Rec, F1, IOU, and Kappa. In the IOU metrics, SFEARNet
+has improved by 1.85 percentage points relative to AMTNet
+and 3.72 percentage points relative to BIT. SFEARNet at
+F1 improved by 1.40 percentage points over AMTNet,
+2.84 percentage points over BIT, and 4.01 percentage points
+over MSCANet. The qualitative results show that SFEARNet
+achieves good recognition results in linear, small, large, and
+irregular regions. Although there are some missed detections,
+SFEARNet can still identify areas of change while retaining
+edge information.
+SFEARNet works best on the datasets of LEVIR-CD,
+WHU-CD, GZ-CD, and CLCD. The results are evidence of
+the effectiveness and robustness of this approach. SFEARNet
+shows lower detection error and more accurate edge detection,
+both quantitatively and qualitatively. It clearly demonstrates
+
+Authorized licensed use limited to: JILIN UNIVERSITY. Downloaded on February 24,2026 at 14:27:15 UTC from IEEE Xplore. Restrictions apply.
+
+LI et al.: SFEARNet: A NETWORK COMBINING SEMANTIC FLOW AND EDGE-AWARE REFINEMENT
+
+5402518
+
+Fig. 7. Visualization comparisons on the GZ-CD dataset. (a) T1 image. (b) T2 image. (c) FC-EF. (d) FC-Siam-Conc. (e) FC-Siam-Diff. (f) STANet. (g) BIT.
+(h) MSCANet. (i) DESSN. (j) ChangeFormer. (k) AMTNet. (l) USSFC. (m) EATDer. (n) SFEARNet. (o) Ground truth. White indicates true positive. Black
+indicates true negative. Red indicates false positive. Green indicates false negative.
+
+Fig. 8. Visualization comparisons on the CLCD dataset. (a) T1 image. (b) T2 image. (c) FC-EF. (d) FC-Siam-Conc. (e) FC-Siam-Diff. (f) STANet. (g) BIT.
+(h) MSCANet. (i) DESSN. (j) ChangeFormer. (k) AMTNet. (l) USSFC. (m) EATDer. (n) SFEARNet. (o) Ground truth. White indicates true positive. Black
+indicates true negative. Red indicates false positive. Green indicates false negative.
+
+SFEARNet’s superior performance in bitemporal change
+detection.
+V. D ISCUSSION
+This section will be a discussion of the effectiveness of
+SFITM, PFEM, EARM, and loss. The limitations of the
+proposed method will be explored.
+A. Effectiveness of SFITM
+SFITM improves network performance by enhancing the
+original upsampling method. This experiment is based on
+
+the SegFormer network, utilizing MixTransformer-b0 as the
+backbone network to construct a baseline network for
+comparison. Method-1 integrates SFITM into the baseline
+network. Method-1 is designed to evaluate the influence of
+SFITM. A comprehensive evaluation of the performance of
+SFITM was conducted through the utilization of four distinct
+datasets. This includes LEVIR-CD, WHU-CD, GZ-CD, and
+CLCD.
+The outcomes of the quantitative experiments conducted on
+the four datasets are presented in Table V. The results show
+that SFITM led to significant improvements in a number of
+metrics. On the LEVIR-CD, Pre increased by 0.57 percentage
+
+Authorized licensed use limited to: JILIN UNIVERSITY. Downloaded on February 24,2026 at 14:27:15 UTC from IEEE Xplore. Restrictions apply.
+
+5402518
+
+IEEE TRANSACTIONS ON GEOSCIENCE AND REMOTE SENSING, VOL. 63, 2025
+
+TABLE V
+Q UANTITATIVE C OMPARISON R ESULTS (%) OF THE E FFECTIVENESS OF SFITM. B OLD VALUES A RE B EST
+
+points, while IOU increased by 1.46 percentage points. The
+WHU-CD showed an increase of 1.13 percentage points
+in the IOU and 1.06 percentage points in the Pre. In the
+GZ-CD, IOU increased by 1.37 percentage points and Rec
+by 2.55 percentage points. The CLCD dataset demonstrated a
+3.48 percentage point increase in Rec and a 3.46 percentage
+point increase in IOU. The effectiveness of SFITM is
+demonstrated by the quantitative results presented above.
+As illustrated in Fig. 9, Method-1 demonstrated a substantial
+enhancement in comparison to the baseline. The incorporation
+of the SFITM enables the model to discern alterations
+in the images with greater precision. This observation is
+in accordance with the quantitative results, thereby further
+substantiating the benefits of SFITM in enhancing network
+performance.
+In terms of F1, IOU, Kappa, and recall, SFITM has shown
+significant advantages. The comparative analysis of LEVIRCD, WHU-CD, GZ-CD, and CLCD confirms this. The efficacy
+of SFITM in optimizing network performance is confirmed by
+the results.
+B. Effectiveness of PFEM and EARM
+PFEM improves features by combining different characteristics. EARM focuses on extracting and refining modified edge
+information.
+It is essential to note that the edge information utilized by
+EARM is derived from the feature values generated by PFEM.
+The corrected edge information will affect the feature values
+generated by PFEM, thereby effectively combining the two
+modules. Therefore, this article evaluates the effectiveness of
+PFEM and EARM together. Four different datasets (LEVIRCD, WHU-CD, GZ-CD, and CLCD) were used for the
+experiments. These experiments will comprehensively evaluate
+the performance of PFEM and EARM. PFEM was added
+to Method-1 to construct the new Method-2. SFEARNet
+comprehensively applies SFITM, PFEM, and EARM.
+The experimental findings indicate that the model’s
+performance has been enhanced with PFEM and EARM.
+It is illustrated in Table VI. The introduction of PFEM
+increased the IOU by 0.53 percentage points and the F1 by
+0.32 percentage points on LEVIR-CD. The introduction of
+EARM resulted in an increase of 0.82 percentage points in
+IOU and 0.49 percentage points in F1, respectively. The
+application of PFEM to the WHU-CD dataset was observed to
+result in an increase in IOU by 0.37 percentage points and in
+
+Fig. 9. Visualization comparisons of the effectiveness of SFITM. (a) T1
+image. (b) T2 image. (c) Baseline. (d) Method-1. (e) Ground truth. White
+indicates true positive. Black indicates true negative. Red indicates false
+positive. Green indicates false negative.
+
+Rec by 2.44 percentage points. The introduction of EARM led
+to a further increase in IOU and Pre by 0.42 percentage points
+and 1.40 percentage points, respectively, thereby confirming
+the efficacy of EARM. In the GZ-CD dataset, while PFEM
+exhibited a 0.90 percentage point improvement in IOU,
+Pre demonstrated a 2.76 percentage point increase. The
+introduction of EARM has been shown to increase Rec by
+1.02 percentage points and IOU by 0.83 percentage points.
+The following results were obtained from the CLCD dataset.
+The outcomes lead to a 0.47 percentage point enhancement
+in F1 and a 0.62 percentage point growth in IOU with the
+integration of the PFEM module. The incorporation of EARM
+
+Authorized licensed use limited to: JILIN UNIVERSITY. Downloaded on February 24,2026 at 14:27:15 UTC from IEEE Xplore. Restrictions apply.
+
+LI et al.: SFEARNet: A NETWORK COMBINING SEMANTIC FLOW AND EDGE-AWARE REFINEMENT
+
+5402518
+
+TABLE VI
+Q UANTITATIVE C OMPARISON R ESULTS (%) OF THE E FFECTIVENESS OF PFEM AND EARM. B OLD VALUES A RE B EST
+
+In conclusion, this article presents a comprehensive
+demonstration of the benefits of PFEM and EARM in
+enhancing performance. It can be evidenced by both qualitative
+and quantitative evaluations. The introduction of these two
+modules not only improves the model’s Pre, IOU, and Kappa
+but also enhances its robustness and generalization ability
+when dealing with complex scenes.
+
+C. Effectiveness of Loss Function
+
+Fig. 10. Visualization comparisons of the effectiveness of PFEM and EARM.
+(a) T1 image. (b) T2 image. (c) Method-1. (d) Method-2. (e) SFEARNet.
+(f) Ground truth. White indicates true positive. Black indicates true negative.
+Red indicates false positive. Green indicates false negative.
+
+resulted in an enhancement in IOU by 1.83 percentage points
+and Pre by 2.63 percentage points. This evidence serves to
+illustrate the beneficial impact of PFEM and EARM on the
+enhancement of change detection performance.
+To intuitively demonstrate the experimental results, qualitative analysis was also conducted on each dataset. As shown
+in Fig. 10, compared to Method-1, our method with PFEM
+and EARM can more accurately identify changed regions,
+especially in the edge areas. This result is consistent with the
+quantitative analysis. PFEM and EARM are also shown to be
+effective at improving change detection accuracy.
+
+CE loss, Jaccard loss, and dice loss are all commonly
+utilized loss functions in the field of deep learning. By using
+the three loss functions together, the performance of the model
+can be improved.
+This article sets up ablation experiments to verify the
+effectiveness of each loss function. Method-3 is the network
+model using only CE loss. Method-4 is the network model
+using both CE loss and Jaccard loss. SFEARNet uses all three
+loss functions simultaneously.
+The efficacy of the loss function can be demonstrated in
+Table VII. It is clear that adding Jaccard loss results in
+better accuracy for all the datasets. There was an increase of
+0.54 percentage points in the IOU for the LEVIR-CD dataset
+and an increase of 0.34 percentage points in the Rec dataset.
+On the WHU-CD dataset, the IOU and pre metrics showed
+an improvement of 0.42 and 0.72 percentage points. The GZCD dataset shows an IOU increase of 2.18 percentage points
+and a pre increase of 2.11 percentage points. On the CLCD
+dataset, IOU and Kappa increased by 2.07 and 1.71 percentage
+points. Dice-loss similarly improves model performance. For
+the LEVIR-CD, WHU-CD, GZ-CD, and CLCD datasets, the
+IOU increases by 0.54, 0.59, 1.63, and 0.19 percentage points.
+F1 increases by 0.57, 0.34, 1.00, and 0.14 percentage points.
+To provide a more visual demonstration of each loss function,
+the results of each dataset are presented visually in Fig. 11.
+Method-4 and SFEARNet are better than Method-3. This
+finding serves to substantiate the efficacy of the individual
+loss functions.
+This article demonstrates the advantages of composite loss
+function. The Rec, F1, IOU, and Kappa of the model have
+been shown to be improved by the composite loss function.
+Moreover, the model’s stability and robustness are enhanced.
+
+Authorized licensed use limited to: JILIN UNIVERSITY. Downloaded on February 24,2026 at 14:27:15 UTC from IEEE Xplore. Restrictions apply.
+
+5402518
+
+IEEE TRANSACTIONS ON GEOSCIENCE AND REMOTE SENSING, VOL. 63, 2025
+
+TABLE VII
+Q UANTITATIVE C OMPARISON R ESULTS (%) OF THE E FFECTIVENESS OF L OSS F UNCTION . B OLD VALUES A RE B EST
+
+datasets although it has a moderate level of Params. This
+indicates that SFEARNet has a low level of spatial complexity
+while achieving excellent performance in change detection.
+SFEARNet shows a reduction in the number of Params while
+achieving a reduction in the number of FLOPs compared to
+DESSN and ANTNet. These findings indicate that SFEARNet
+not only reduces storage space demands but also enhances
+computational efficiency, which is of significant importance in
+constrained computing environments. This evidence indicates
+that SFEARNet is able to maintain high accuracy while
+achieving the lowest time complexity. This makes it an ideal
+choice for applications requiring fast response times.
+In summary, there are significant efficiency and performance
+advantages to the proposed SFEARNet network. SFEARNet
+outperforms other methodologies on all datasets and, thus,
+demonstrates its broad applicability and robustness in diverse
+scenarios. In addition, SFEARNet demonstrates excellent
+performance and the lowest FLOPs among models with
+comparable parameter counts. This further substantiates the
+equilibrium of SFEARNet in regard to model complexity,
+precision, and computational efficacy.
+E. Limitations of SFEARNet
+
+Fig. 11. Visualization comparisons of the effectiveness of loss function.
+(a) T1 image. (b) T2 image. (c) Method-3. (d) Method-4. (e) SFEARNet.
+(f) Ground truth. White indicates true positive. Black indicates true negative.
+Red indicates false positive. Green indicates false negative.
+
+D. Efficiency Comparison
+The number of Params and floating-point operations per
+second (FLOPs) are used to evaluate the performance of
+SFEARNet. This evaluation validates SFRAENet’s effectiveness and efficiency. The complexity of the model is indicated
+by the number of Params. In contrast, the concept of FLOPs is
+a parameter for evaluating the time complexity of the model.
+The Params and the FLOPs of the proposed SFEARNet
+are presented in comparison with other methods. It is given
+in Table VIII. The comparison unambiguously illustrates the
+benefits of SFEARNet in relation to Params and FLOPs.
+SFEARNet has the highest F1 and IOU across the different
+
+The aforementioned method, SFEARNet, has demonstrated
+an acceptable equilibrium between efficiency and accuracy in
+change detection tasks. However, it must be acknowledged
+that certain inherent constraints do exist, which require further
+attention in subsequent research. The involvement of complex
+matrix operations and the intricate network architecture results
+in a relatively high parameter size for SFEARNet. The high
+parameter size necessitates a greater demand for computational
+resources and storage, which may impede the deployment
+of SFEARNet in resource-constrained environments. Despite
+SFEARNet’s remarkable impact on edge extraction for
+changing areas and its ability to capture more accurate and
+refined edge features, its performance is still limited by
+the complexity of the network and the variety of feature
+types. This constraint suggests that SFEARNet might continue
+to encounter instances of either missed or false detection
+in particular contexts. The existence of these phenomena
+indicates that there is still scope for further optimization
+of the proposed method. Future research may benefit from
+
+Authorized licensed use limited to: JILIN UNIVERSITY. Downloaded on February 24,2026 at 14:27:15 UTC from IEEE Xplore. Restrictions apply.
+
+LI et al.: SFEARNet: A NETWORK COMBINING SEMANTIC FLOW AND EDGE-AWARE REFINEMENT
+
+5402518
+
+TABLE VIII
+C OMPARISON R ESULTS OF E FFICIENCY OF D IFFERENT M ETHODS . B OLD VALUES A RE B EST
+
+investigating techniques that could improve the performance
+of the aforementioned network, such as model pruning,
+quantization, or knowledge distillation. These methods can
+reduce the parameter size and computational requirements
+while maintaining or even improving accuracy. Furthermore,
+an investigation into more sophisticated network architectures
+or feature fusion methodologies could assist SFEARNet in
+more effectively processing intricate feature types, thereby
+reducing the occurrence of missed and false detections.
+VI. C ONCLUSION
+This article presents a network combining semantic flow
+and edge-aware refinement for highly efficient RS image
+change detection named SFEARNet. The network has been
+constructed based on the SegFormer architecture and integrates
+three key modules. These are the PFEM, the SFITM, and
+the EARM. PFEM strengthens the differential information of
+change areas. SFITM is designed to minimize information
+loss during the upsampling. EARM is designed to refine the
+edge of the changed regions. It makes edges more precise
+and refined. The collective impact of these modules has a
+discernible positive influence. They also excel in the precision
+and comprehensiveness of altered region delineation.
+This article uses a combination of multiscale features.
+PFEM combines different scale images at different dilatation
+rates. The module combines the original differential,
+contextual, and attention features. In SFITM, the transfer of
+semantic information between deep and shallow features is
+employed to obtain high-resolution feature maps with high
+semantic information content. The extensive use of multiscale
+features enhances the network’s ability to capture rich detail
+and high-level semantics in the image. It also improves its
+stability and adaptability in the face of inputs of different
+scales and complexities.
+In this article, fine edge feature generation and correction
+are applied to obtain more accurate and detailed edge
+information in EARM using the dice loss function. This
+edge information is further used to make a refinement to
+the extracted features. The edge region of the feature map is
+adjusted and optimized in order to make the final obtained
+feature values more explicit and clearer at the edge. The
+inclusion of EARM makes the network show a high degree of
+accuracy and robustness.
+
+To assess the efficacy of SFEARNet, comparative experiments were conducted on the LEVIR-CD, WHU-CD, GZ-CD,
+and CLCD datasets. The findings of the experiments were
+categorized according to three distinct analytical approaches:
+qualitative, quantitative, and network efficiency analyses.
+These allow for the verification of the robustness and
+generalizability of SFEARNet. The results further substantiate
+the effect of SFITM, PFEM, and EARM in enhancing
+model performance. This article also illustrates the efficacy
+of mixed losses. SFEARNet achieves an optimal balance
+between efficiency and accuracy. In particular, in networks
+with the same parameter scale, SFEARNet demonstrated the
+lowest FLOPs and achieved the highest efficiency. SFEARNet
+exhibited slightly superior accuracy and demonstrated a
+notable enhancement in efficiency.
+Although SFEARNet has reached a certain equilibrium
+between efficiency and accuracy, further enhancements are
+still necessary with regard to parameter size. Moreover,
+in scenarios characterized by complexity, the process of
+change detection can be significantly influenced by a number
+of external factors, including lighting and shadows. In future
+research, the objective will be to enhance the model’s
+resilience to interference, reduce the model’s parameter size,
+and accelerate the model’s inference speed. Furthermore,
+additional research will be undertaken to investigate the
+viability of cross-device change detection solutions in
+environments with limited resources.
+R EFERENCES
+[1] Z. Lv et al., “Land cover change detection with heterogeneous
+remote sensing images: Review, progress, and perspective,” Proc. IEEE,
+vol. 110, no. 12, pp. 1976–1991, Dec. 2022.
+[2] Y. Du, R. Zhong, Q. Li, and F. Zhang, “TransUNet++SAR: Change
+detection with deep learning about architectural ensemble in SAR
+images,” Remote Sens., vol. 15, no. 1, p. 6, Dec. 2022.
+[3] Z. Zhu and C. E. Woodcock, “Continuous change detection and
+classification of land cover using all available Landsat data,” Remote
+Sens. Environ., vol. 144, pp. 152–171, Mar. 2014.
+[4] K. Tan et al., “Change detection on multi-sensor imagery using mixed
+interleaved group convolutional network,” Eng. Appl. Artif. Intell.,
+vol. 133, Jul. 2024, Art. no. 108446.
+[5] Z. Zheng, Y. Zhong, J. Wang, A. Ma, and L. Zhang, “Building
+damage assessment for rapid disaster response with a deep objectbased semantic change detection framework: From natural disasters
+to man-made disasters,” Remote Sens. Environ., vol. 265, Nov. 2021,
+Art. no. 112636.
+
+Authorized licensed use limited to: JILIN UNIVERSITY. Downloaded on February 24,2026 at 14:27:15 UTC from IEEE Xplore. Restrictions apply.
+
+5402518
+
+IEEE TRANSACTIONS ON GEOSCIENCE AND REMOTE SENSING, VOL. 63, 2025
+
+[6] Y. Qing et al., “Operational earthquake-induced building damage
+assessment using CNN-based direct remote sensing change detection
+on superpixel level,” Int. J. Appl. Earth Observ. Geoinf., vol. 112,
+Aug. 2022, Art. no. 102899.
+[7] S. Sony, K. Dunphy, A. Sadhu, and M. Capretz, “A systematic review
+of convolutional neural network-based structural condition assessment
+techniques,” Eng. Struct., vol. 226, Jan. 2021, Art. no. 111347.
+[8] Y. Liu et al., “Landslide detection of high-resolution satellite images
+using asymmetric dual-channel network,” in Proc. IEEE Int. Geosci.
+Remote Sens. Symp. (IGARSS), Jul. 2021, pp. 4091–4094.
+[9] S. Amini, M. Saber, H. Rabiei-Dastjerdi, and S. Homayouni, “Urban
+land use and land cover change analysis using random forest
+classification of Landsat time series,” Remote Sens., vol. 14, no. 11,
+p. 2654, Jun. 2022.
+[10] W. Zhou, D. Ming, X. Lv, K. Zhou, H. Bao, and Z. Hong, “SO–CNN
+based urban functional zone fine division with VHR remote sensing
+image,” Remote Sens. Environ., vol. 236, Jan. 2020, Art. no. 111458.
+[11] C. Zhang et al., “A hybrid MLP-CNN classifier for very fine resolution
+remotely sensed image classification,” ISPRS J. Photogramm. Remote
+Sens., vol. 140, pp. 133–144, Jun. 2018.
+[12] D. Dong et al., “Building extraction from high spatial resolution remote
+sensing images of complex scenes by combining region-line feature
+fusion and OCNN,” IEEE J. Sel. Topics Appl. Earth Observ. Remote
+Sens., vol. 16, pp. 4423–4438, 2023.
+[13] J. Zheng, Y. Feng, C. Bai, and J. Zhang, “Hyperspectral image
+classification using mixed convolutions and covariance pooling,” IEEE
+Trans. Geosci. Remote Sens., vol. 59, no. 1, pp. 522–534, Jan. 2021.
+[14] S. Wan, C. Gong, P. Zhong, B. Du, L. Zhang, and J. Yang,
+“Multiscale dynamic graph convolutional network for hyperspectral
+image classification,” IEEE Trans. Geosci. Remote Sens., vol. 58, no. 5,
+pp. 3162–3177, May 2020.
+[15] X. Wang, K. Tan, P. Du, C. Pan, and J. Ding, “A unified multiscale
+learning framework for hyperspectral image classification,” IEEE Trans.
+Geosci. Remote Sens., vol. 60, 2022, Art. no. 4508319.
+[16] D. Dong, D. Ming, L. Xu, Q. Qiao, and Y. Zhang, “A stepwise
+framework for fine-scale mining area types recognition in large-scale
+scenes by GF-5 and GF-2 images,” IEEE J. Sel. Topics Appl. Earth
+Observ. Remote Sens., vol. 16, pp. 5714–5727, 2023.
+[17] Y. Quan, H. Xu, R. Wang, Q. Guan, and J. Zheng, “ORSI salient
+object detection via progressive semantic flow and uncertainty-aware
+refinement,” IEEE Trans. Geosci. Remote Sens., vol. 62, 2024,
+Art. no. 5608013.
+[18] D. Yu and S. Ji, “A new spatial-oriented object detection framework
+for remote sensing images,” IEEE Trans. Geosci. Remote Sens.,
+vol. 60, 2022, Art. no. 4407416.
+[19] L. Xu, J. Yu, and D. Ming, “HODet: A new detector for arbitraryoriented rectangular object in optical remote sensing imagery,”
+IEEE J. Sel. Topics Appl. Earth Observ. Remote Sens., vol. 17,
+pp. 2918–2926, 2024.
+[20] M. Wang, X. Li, K. Tan, J. Mango, C. Pan, and D. Zhang, “Positionaware graph-CNN fusion network: An integrated approach combining
+geospatial information and graph attention network for multiclass
+change detection,” IEEE Trans. Geosci. Remote Sens., vol. 62, 2024,
+Art. no. 4402016.
+[21] Q. Li, Y. Chen, and Y. Zeng, “Transformer with transfer CNN for
+remote-sensing-image object detection,” Remote Sens., vol. 14, no. 4,
+p. 984, Feb. 2022.
+[22] L. Xu et al., “Parcel level staple crop type identification based on newly
+defined red-edge vegetation indices and ORNN,” Comput. Electron.
+Agricult., vol. 211, Aug. 2023, Art. no. 108012.
+[23] Q. Liu et al., “Unsupervised detection of contextual anomaly in remotely
+sensed data,” Remote Sens. Environ., vol. 202, pp. 75–87, Dec. 2017.
+[24] H. Wang et al., “FPT: Fine-grained detection of driver distraction
+based on the feature pyramid vision transformer,” IEEE Trans. Intell.
+Transp. Syst., vol. 24, no. 2, pp. 1594–1608, Feb. 2023.
+[25] Z. Deng, H. Sun, S. Zhou, J. Zhao, L. Lei, and H. Zou, “Multi-scale
+object detection in remote sensing imagery with convolutional neural
+networks,” ISPRS J. Photogramm. Remote Sens., vol. 145, pp. 3–22,
+Nov. 2018.
+[26] J. Han, D. Zhang, G. Cheng, L. Guo, and J. Ren, “Object detection in
+optical remote sensing images based on weakly supervised learning and
+high-level feature learning,” IEEE Trans. Geosci. Remote Sens., vol. 53,
+no. 6, pp. 3325–3337, Jun. 2015.
+
+[27] H. Wan et al., “Orientation detector for ship targets in SAR images based
+on semantic flow feature alignment and Gaussian label matching,” IEEE
+Trans. Geosci. Remote Sens., vol. 61, 2023, Art. no. 5218616.
+[28] Y. Gu, H. Xu, Y. Quan, W. Chen, and J. Zheng, “ORSI salient object
+detection via bidimensional attention and full-stage semantic guidance,”
+IEEE Trans. Geosci. Remote Sens., vol. 61, 2023, Art. no. 5603213.
+[29] W. Du et al., “SARNas: A hardware-aware SAR target detection
+algorithm via multiobjective neural architecture search,” IEEE Trans.
+Geosci. Remote Sens., vol. 61, 2023, Art. no. 5212923.
+[30] J.-F. Hu, T.-Z. Huang, L.-J. Deng, T.-X. Jiang, G. Vivone, and
+J. Chanussot, “Hyperspectral image super-resolution via deep spatiospectral attention convolutional neural networks,” IEEE Trans. Neural
+Netw. Learn. Syst., vol. 33, no. 12, pp. 7251–7265, Dec. 2022.
+[31] X. Hu, F. Xu, Y. Guo, W. Feng, and Y.-Q. Jin, “MDLI-Net: Model-driven
+learning imaging network for high-resolution microwave imaging with
+large rotating angle and sparse sampling,” IEEE Trans. Geosci. Remote
+Sens., vol. 60, 2022, Art. no. 5212617.
+[32] X. Dong, X. Sun, X. Jia, Z. Xi, L. Gao, and B. Zhang, “Remote sensing
+image super-resolution using novel dense-sampling networks,” IEEE
+Trans. Geosci. Remote Sens., vol. 59, no. 2, pp. 1618–1633, Feb. 2021.
+[33] D. Zhang, J. Shao, X. Li, and H. T. Shen, “Remote sensing image superresolution via mixed high-order attention network,” IEEE Trans. Geosci.
+Remote Sens., vol. 59, no. 6, pp. 5183–5196, Jun. 2021.
+[34] X. Peng, R. Zhong, Z. Li, and Q. Li, “Optical remote sensing image
+change detection based on attention mechanism and image difference,”
+IEEE Trans. Geosci. Remote Sens., vol. 59, no. 9, pp. 7296–7307,
+Sep. 2020.
+[35] S. Fang, K. Li, J. Shao, and Z. Li, “SNUNet-CD: A densely connected
+Siamese network for change detection of VHR images,” IEEE Geosci.
+Remote Sens. Lett., vol. 19, pp. 1–5, 2021.
+[36] X. Long, W. Zhuang, M. Xia, K. Hu, and H. Lin, “SASiamNet:
+Self-adaptive Siamese network for change detection of remote sensing
+image,” IEEE J. Sel. Topics Appl. Earth Observ. Remote Sens., vol. 17,
+pp. 1021–1034, 2024.
+[37] B. Bai, W. Fu, T. Lu, and S. Li, “Edge-guided recurrent convolutional
+neural network for multitemporal remote sensing image building change
+detection,” IEEE Trans. Geosci. Remote Sens., vol. 60, pp. 1–13,
+2021.
+[38] J. Zhang et al., “AERNet: An attention-guided edge refinement network
+and a dataset for remote sensing building change detection,” IEEE Trans.
+Geosci. Remote Sens., vol. 61, 2023, Art. no. 5617116.
+[39] J. Ma, J. Duan, X. Tang, X. Zhang, and L. Jiao, “EATDer: Edge-assisted
+adaptive transformer detector for remote sensing change detection,”
+IEEE Trans. Geosci. Remote Sens., vol. 62, 2024, Art. no. 5602015.
+[40] Y. Xiang, X. Tian, Y. Xu, X. Guan, and Z. Chen, “EGMT-CD: Edgeguided multimodal transformers change detection from satellite and
+aerial images,” Remote Sens., vol. 16, no. 1, p. 86, Dec. 2023.
+[41] X. Wang et al., “Double U-Net (W-Net): A change detection network
+with two heads for remote sensing imagery,” Int. J. Appl. Earth Observ.
+Geoinf., vol. 122, Aug. 2023, Art. no. 103456.
+[42] E. Xie, W. Wang, Z. Yu, A. Anandkumar, J. M. Alvarez, and P. Luo,
+“SegFormer: Simple and efficient design for semantic segmentation with
+transformers,” in Advances in Neural Information Processing Systems,
+vol. 34, M. Ranzato, A. Beygelzimer, Y. Dauphin, P. Liang, and
+J. W. Vaughan, Eds., Red Hook, NY, USA: Curran Associates, 2021,
+pp. 12077–12090.
+[43] R. Ji, K. Tan, X. Wang, C. Pan, and L. Xin, “PASSNet: A spatial–
+spectral feature extraction network with patch attention module for
+hyperspectral image classification,” IEEE Geosci. Remote Sens. Lett.,
+vol. 20, pp. 1–5, 2023.
+[44] Y. Mo, Z. Guo, R. Zhong, W. Song, and S. Cao, “Urban functional
+zone classification using light-detection-and-ranging point clouds, aerial
+images, and point-of-interest data,” Remote Sens., vol. 16, no. 2, p. 386,
+Jan. 2024.
+[45] L. Zhang, S. Zhang, B. Zou, and H. Dong, “Unsupervised deep
+representation learning and few-shot classification of PolSAR images,”
+IEEE Trans. Geosci. Remote Sens., vol. 60, 2022, Art. no. 5100316.
+[46] B. Zeng et al., “Top-down aircraft detection in large-scale scenes based
+on multi-source data and FEF-R-CNN,” Int. J. Remote Sens., vol. 43,
+no. 3, pp. 1108–1130, Feb. 2022.
+[47] H. Chen, W. Yang, L. Liu, and G.-S. Xia, “Coarse-to-fine semantic
+segmentation of satellite images,” ISPRS J. Photogramm. Remote Sens.,
+vol. 217, pp. 1–17, Nov. 2024.
+[48] M. Xu, X. Zhong, and R. Zhong, “A method for automatic extraction and
+individual segmentation of urban street trees from laser point clouds,”
+Opt. Laser Technol., vol. 180, Jan. 2025, Art. no. 111431.
+
+Authorized licensed use limited to: JILIN UNIVERSITY. Downloaded on February 24,2026 at 14:27:15 UTC from IEEE Xplore. Restrictions apply.
+
+LI et al.: SFEARNet: A NETWORK COMBINING SEMANTIC FLOW AND EDGE-AWARE REFINEMENT
+
+[49] R. Xu, C. Wang, J. Zhang, S. Xu, W. Meng, and X. Zhang, “RSSFormer:
+Foreground saliency enhancement for remote sensing land-cover
+segmentation,” IEEE Trans. Image Process., vol. 32, pp. 1052–1064,
+2023.
+[50] Y. Zhang, D. Ming, D. Dong, and L. Xu, “Object-oriented U-GCN
+for open-pit mining extraction from high spatial resolution remotesensing images of complex scenes,” Int. J. Remote Sens., vol. 45, no. 22,
+pp. 8313–8333, Nov. 2024.
+[51] T. Lu, D. Ming, X. Lin, Z. Hong, X. Bai, and J. Fang, “Detecting
+building edges from high spatial resolution remote sensing imagery
+using richer convolution features network,” Remote Sens., vol. 10, no. 9,
+p. 1496, Sep. 2018.
+[52] G. Wang et al., “FSoD-Net: Full-scale object detection from optical
+remote sensing imagery,” IEEE Trans. Geosci. Remote Sens., vol. 60,
+2022, Art. no. 5602918.
+[53] Z. Guo, J. Wei, H. Sun, R. Zhong, and C. Ji, “Enhanced water leakage
+detection in shield tunnels based on laser scanning intensity images
+using RDES-Net,” IEEE J. Sel. Topics Appl. Earth Observ. Remote Sens.,
+vol. 17, pp. 5680–5690, 2024.
+[54] G. Pang, C. Shen, L. Cao, and A. Van den Hengel, “Deep learning for
+anomaly detection: A review,” ACM Comput. Surv., vol. 54, pp. 1–38,
+Apr. 2021.
+[55] X. Xia et al., “GAN-based anomaly detection: A review,” Neurocomputing, vol. 493, pp. 497–535, Jul. 2022.
+[56] Y. Xiao, Q. Yuan, K. Jiang, J. He, X. Jin, and L. Zhang, “EDiffSR:
+An efficient diffusion probabilistic model for remote sensing image
+super-resolution,” IEEE Trans. Geosci. Remote Sens., vol. 62, 2024,
+Art. no. 5601514.
+[57] C. Dong, C. C. Loy, K. He, and X. Tang, “Image super-resolution using
+deep convolutional networks,” IEEE Trans. Pattern Anal. Mach. Intell.,
+vol. 38, no. 2, pp. 295–307, Feb. 2016.
+[58] Y. Chen, D. Ming, and X. Lv, “Superpixel based land cover classification
+of VHR satellite image combining multi-scale CNN and scale parameter
+estimation,” Earth Sci. Informat., vol. 12, no. 3, pp. 341–363, Sep. 2019.
+[59] X. Tang, T. Zhang, J. Ma, X. Zhang, F. Liu, and L. Jiao,
+“WNet: W-shaped hierarchical network for remote-sensing image
+change detection,” IEEE Trans. Geosci. Remote Sens., vol. 61, 2023,
+Art. no. 5615814.
+[60] J. Huang, Y. Liu, M. Wang, Y. Zheng, J. Wang, and D. Ming, “Change
+detection of high spatial resolution images based on region-line primitive
+association analysis and evidence fusion,” Remote Sens., vol. 11, no. 21,
+p. 2484, Oct. 2019.
+[61] S. Yuan, R. Zhong, Q. Li, and Y. Dong, “MFGFNet: A multi-scale
+remote sensing change detection network using the global filter in the
+frequency domain,” Remote Sens., vol. 15, no. 6, p. 1682, Mar. 2023.
+[62] D. Wang, X. Chen, M. Jiang, S. Du, B. Xu, and J. Wang,
+“ADS-Net: An attention-based deeply supervised network for remote
+sensing image change detection,” Int. J. Appl. Earth Observ. Geoinf.,
+vol. 101, Sep. 2021, Art. no. 102348.
+[63] F. Gu, P. Xiao, X. Zhang, Z. Li, and D. Muhtar, “FDFF-Net: A full-scale
+difference feature fusion network for change detection in high-resolution
+remote sensing images,” IEEE J. Sel. Topics Appl. Earth Observ. Remote
+Sens., vol. 17, pp. 2161–2172, 2024.
+[64] X. Wang et al., “A high-resolution feature difference attention network
+for the application of building change detection,” Int. J. Appl. Earth
+Observ. Geoinf., vol. 112, Aug. 2022, Art. no. 102950.
+[65] R. C. Daudt, B. Le Saux, and A. Boulch, “Fully convolutional Siamese
+networks for change detection,” in Proc. 25th IEEE Int. Conf. Image
+Process. (ICIP), Oct. 2018, pp. 4063–4067.
+[66] S. Zhu, Y. Song, Y. Zhang, and Y. Zhang, “ECFNet: A Siamese network
+with fewer FPs and fewer FNs for change detection of remote-sensing
+images,” IEEE Geosci. Remote Sens. Lett., vol. 20, pp. 1–5, 2023.
+[67] M. Wang, K. Tan, X. Jia, X. Wang, and Y. Chen, “A deep Siamese
+network with hybrid convolutional feature extraction module for change
+detection based on multi-sensor remote sensing images,” Remote Sens.,
+vol. 12, no. 2, p. 205, Jan. 2020.
+[68] X. Li, M. He, H. Li, and H. Shen, “A combined loss-based
+multiscale fully convolutional network for high-resolution remote
+sensing image change detection,” IEEE Geosci. Remote Sens. Lett.,
+vol. 19, pp. 1–5, 2022.
+[69] H. Chen, Z. Qi, and Z. Shi, “Remote sensing image change detection
+with transformers,” IEEE Trans. Geosci. Remote Sens., vol. 60, pp. 1–14,
+2021.
+[70] Q. Li, R. Zhong, X. Du, and Y. Du, “TransUNetCD: A hybrid transformer network for change detection in optical remote-sensing images,”
+IEEE Trans. Geosci. Remote Sens., vol. 60, 2022, Art. no. 5622519.
+
+5402518
+
+[71] M. Zhang and W. Shi, “A feature difference convolutional neural
+network-based change detection method,” IEEE Trans. Geosci. Remote
+Sens., vol. 58, no. 10, pp. 7232–7246, Oct. 2020.
+[72] T. Du et al., “ESDSCNet: An enhanced shallow feature difference and
+semantic context network for remote sensing change detection: With
+building change detection as a case,” Int. J. Remote Sens., vol. 44, no. 12,
+pp. 3726–3752, Jun. 2023.
+[73] L. Song, M. Xia, L. Weng, H. Lin, M. Qian, and B. Chen, “Axial cross
+attention meets CNN: Bibranch fusion network for change detection,”
+IEEE J. Sel. Topics Appl. Earth Observ. Remote Sens., vol. 16,
+pp. 32–43, 2023.
+[74] M. Liu, Z. Chai, H. Deng, and R. Liu, “A CNN-transformer network
+with multiscale context aggregation for fine-grained cropland change
+detection,” IEEE J. Sel. Topics Appl. Earth Observ. Remote Sens.,
+vol. 15, pp. 4297–4306, 2022.
+[75] W. Wang, X. Tan, P. Zhang, and X. Wang, “A CBAM based multiscale
+transformer fusion approach for remote sensing image change detection,”
+IEEE J. Sel. Topics Appl. Earth Observ. Remote Sens., vol. 15,
+pp. 6817–6825, 2022.
+[76] W. G. C. Bandara and V. M. Patel, “A transformer-based Siamese
+network for change detection,” in Proc. IEEE Int. Geosci. Remote Sens.
+Symp., Jul. 2022, pp. 207–210.
+[77] C. Zhang et al., “A deeply supervised image fusion network for change
+detection in high resolution bi-temporal remote sensing images,” ISPRS
+J. Photogramm. Remote Sens., vol. 166, pp. 183–200, Aug. 2020.
+[78] L. Xia, J. Chen, J. Luo, J. Zhang, D. Yang, and Z. Shen, “Building
+change detection based on an edge-guided convolutional neural network
+combined with a transformer,” Remote Sens., vol. 14, no. 18, p. 4524,
+Sep. 2022.
+[79] Y. Zhu, K. Lv, Y. Yu, and W. Xu, “Edge-guided parallel network for
+VHR remote sensing image change detection,” IEEE J. Sel. Top. Appl.
+Earth Observ. Remote Sens., vol. 16, pp. 7791–7803, 2023.
+[80] X. Li et al., “Semantic flow for fast and accurate scene parsing,” CoRR,
+vol. abs/2002.10120, 2020.
+[81] L.-C. Chen, Y. Zhu, G. Papandreou, F. Schroff, and H. Adam,
+“Encoder–decoder with Atrous separable convolution for semantic
+image segmentation,” in Proc. Eur. Conf. Comput. Vis. (ECCV), 2018,
+pp. 801–818.
+[82] S. Woo, J. Park, J.-Y. Lee, and I. S. Kweon, “CBAM: Convolutional
+block attention module,” in Proc. Eur. Conf. Comput. Vis., Sep. 2018,
+pp. 3–19.
+[83] Y. Sun, S. Wang, C. Chen, and T.-Z. Xiang, “Boundary-guided
+camouflaged object detection,” 2022, arXiv:2207.00794.
+[84] H. Chen and Z. Shi, “A spatial–temporal attention-based method and a
+new dataset for remote sensing image change detection,” Remote Sens.,
+vol. 12, no. 10, p. 1662, 2020.
+[85] S. Ji, S. Wei, and M. Lu, “Fully convolutional networks for multisource
+building extraction from an open aerial and satellite imagery data
+set,” IEEE Trans. Geosci. Remote Sens., vol. 57, no. 1, pp. 574–586,
+Jan. 2018.
+[86] D. Peng, L. Bruzzone, Y. Zhang, H. Guan, H. Ding, and X. Huang,
+“SemiCDNet: A semisupervised convolutional neural network for
+change detection in high resolution remote-sensing images,” IEEE Trans.
+Geosci. Remote Sens., vol. 59, no. 7, pp. 5891–5906, Jul. 2021.
+[87] T. Lei et al., “Difference enhancement and spatial–spectral nonlocal
+network for change detection in VHR remote sensing images,” IEEE
+Trans. Geosci. Remote Sens., vol. 60, pp. 1–13, 2021.
+[88] T. Lei et al., “Ultralightweight spatial–spectral feature cooperation
+network for change detection in remote sensing images,” IEEE Trans.
+Geosci. Remote Sens., vol. 61, 2023, Art. no. 4402114.
+[89] W. Liu, Y. Lin, W. Liu, Y. Yu, and J. Li, “An attention-based multiscale
+transformer network for remote sensing image change detection,” ISPRS
+J. Photogramm. Remote Sens., vol. 202, pp. 599–609, Aug. 2023.
+
+Miao Li is currently pursuing the master’s degree
+with the School of Information Engineering, China
+University of Geosciences (Beijing), Beijing, China.
+Her research interests include processing and
+change detection of high spatial resolution remote
+sensing images.
+
+Authorized licensed use limited to: JILIN UNIVERSITY. Downloaded on February 24,2026 at 14:27:15 UTC from IEEE Xplore. Restrictions apply.
+
+5402518
+
+IEEE TRANSACTIONS ON GEOSCIENCE AND REMOTE SENSING, VOL. 63, 2025
+
+Dongping Ming (Senior Member, IEEE) received
+the B.E. degree in land administration and cadastral
+surveying from Wuhan Technical University of
+Surveying and Mapping, Wuhan, China, in 1999, the
+M.E. degree in cartography and geographic information engineering from Wuhan University, Wuhan,
+in 2002, and the Ph.D. degree in cartography and
+geographic information system from the Institute
+of Geographical Sciences and Natural Resources
+Research, Chinese Academy of Sciences, Beijing,
+China, in 2006.
+She is currently a Full Professor with the School of Information Engineering,
+China University of Geosciences (Beijing), Beijing. Her research interests
+include high spatial resolution remote sensing image processing and analysis,
+remote sensing application of resources and environment monitoring, and
+intelligent prevention and control of geohazards.
+
+Lu Xu received the B.S. degree in geographical
+information science and the Ph.D. degree in
+surveying and mapping from China University of
+Geosciences (Beijing), Beijing, China, in 2018 and
+2024, respectively.
+He is currently a Lecturer with the School of
+Information Engineering, China University of Geosciences (Beijing). He focuses on comprehending
+very high spatial resolution remote sensing images.
+His research interests include object-based image
+analysis (OBIA) and information extraction by deep
+learning methods.
+
+Dehui Dong is currently pursuing the Ph.D.
+degree in surveying and mapping with the School
+of Information Engineering, China University of
+Geosciences (Beijing), Beijing, China.
+His research interests include deep learning for
+high spatial resolution remote sensing images’
+processing and applications.
+
+Yu Zhang is currently pursuing the Ph.D. degree
+with the School of Information Engineering, China
+University of Geosciences (Beijing), Beijing, China.
+Her research interests include the intelligent
+processing and application of high spatial resolution
+remote sensing images.
+
+Authorized licensed use limited to: JILIN UNIVERSITY. Downloaded on February 24,2026 at 14:27:15 UTC from IEEE Xplore. Restrictions apply.
+
+
+
+============================================================
+PROJECT NOTES (Maintained by assistant)
+Last updated: 2026-05-07
+============================================================
+
+[Recovery Summary]
+This section restores discussion results after an interrupted session.
+
+1) Baseline vs New Contribution
+- Baseline (existing framework): semantic-flow and edge-aware change detection pipeline.
+- New contribution (current project): feature-level contrastive supervision and bounded multi-task joint optimization objective.
+
+2) Code-Verified Objective Form
+- Segmentation branch:
+  loss_seg = alpha * CE_norm + (1 - alpha) * IoU_norm
+- Total objective:
+  loss_all = (1 - beta - gamma) * loss_seg + beta * loss_contrast + gamma * loss_edge
+- Normalization rule:
+  CE is mapped to [0,1] by 1-exp(-CE), IoU/contrast/edge terms are clamped to [0,1], and final loss is clamped to [0,1].
+
+3) Pseudo-change-oriented Interpretation
+- Target behavior is annotation-consistent change prediction under pseudo-change disturbance (visual difference exists but label says unchanged),
+  not merely maximizing raw photometric-change sensitivity.
+
+4) Writing Constraints to Keep Consistent
+- In innovation summary language, avoid presenting baseline model name itself as the innovation.
+- Use wording: "multi-task joint optimization".
+- In Method section, provide explicit equations and symbol definitions for alpha, beta, gamma, margin.
+
+5) Next Execution Queue
+- Finalize methodology subsection text with objective equations.
+- Plan ablation factors: beta, gamma, margin.
+- Link reproducibility artifacts (logs/csv/best_model path) in experiment section.
+
+6) Progress on 2026-05-07
+- Chapter 3 (Methodology) has been fully drafted and written into:
+  manuscript/Sections/4-Methodology.tex
+- Main covered parts:
+  (i) pseudo-change motivation,
+  (ii) framework overview,
+  (iii) feature-level contrastive supervision,
+  (iv) bounded multi-task joint optimization,
+  (v) linkage to five-part experiment protocol.

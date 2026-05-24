@@ -4,13 +4,21 @@ from Metric import SegmentationMetric
 import logging
 from tensorboardX import SummaryWriter
 
+def _normalize_ce(loss_ce: torch.Tensor) -> torch.Tensor:
+    # Map cross-entropy loss to [0, 1]
+    return 1.0 - torch.exp(-loss_ce)
+
+
 def train_epoch(model: torch.nn.Module,
                 train_loader: torch.utils.data.DataLoader,
                 optimizer: torch.optim.Optimizer,
                 criterion_iou: torch.nn.Module,
                 criterion_ce: torch.nn.Module,
                 criterion_dice_edge: torch.nn.Module,
-                lamda: float,
+                criterion_contrast: torch.nn.Module,
+                alpha: float,
+                beta: float,
+                gamma: float,
                 device: torch.device,
                 epoch_id: int,
                 args,
@@ -26,7 +34,10 @@ def train_epoch(model: torch.nn.Module,
     :param criterion_iou: IOU损失函数
     :param criterion_ce: 交叉熵损失函数
     :param criterion_dice_edge: Dice边缘损失函数
-    :param lamda: 边缘损失权重
+    :param criterion_contrast: 对比损失函数
+    :param alpha: segmentation loss weight for CE vs IoU
+    :param beta: contrastive loss weight
+    :param gamma: edge loss weight
     :param device: 设备
     :param epoch_id: 当前epoch编号
     :param args: 参数对象
@@ -35,6 +46,9 @@ def train_epoch(model: torch.nn.Module,
     :param batch_train_records: 批次记录列表
     :return: 包含训练loss和各项指标的字典
     """
+    if not (0.0 <= beta <= 1.0 and 0.0 <= gamma <= 1.0 and beta + gamma <= 1.0):
+        raise ValueError(f"beta and gamma must satisfy 0 <= beta <=1, 0 <= gamma <=1 and beta+gamma <=1; got beta={beta}, gamma={gamma}")
+
     model.train()
     train_metric = SegmentationMetric(numClass=2)
     train_loss_sum = 0.0
@@ -49,11 +63,20 @@ def train_epoch(model: torch.nn.Module,
 
         model_x = model(image_A, image_B)
         label_pred = model_x[0]
-
+        #损失函数分为三部分，1是语义分割（ce，iou）,2是边缘检测（dice_edge），3是特征级别，对比损失（contrast）。alpha控制ce和iou的权重，beta控制contrast的权重，gamma控制edge的权重。总损失是三部分的加权和，并且保证在[0,1]之间。
         loss_ce = criterion_ce(label_pred, label)
         loss_iou = criterion_iou(label_pred, label, 2)
         loss_dice_edge = criterion_dice_edge(model_x[1], edge, 2)
-        loss = loss_iou + loss_ce + lamda * loss_dice_edge
+        loss_contrast = criterion_contrast(model_x[2], model_x[3], label)
+
+        loss_ce_norm = _normalize_ce(loss_ce)
+        loss_iou_norm = torch.clamp(loss_iou, 0.0, 1.0)
+        loss_edge_norm = torch.clamp(loss_dice_edge, 0.0, 1.0)
+        loss_contrast_norm = torch.clamp(loss_contrast, 0.0, 1.0)
+
+        loss_seg = alpha * loss_ce_norm + (1.0 - alpha) * loss_iou_norm
+        loss = (1.0 - beta - gamma) * loss_seg + beta * loss_contrast_norm + gamma * loss_edge_norm
+        loss = torch.clamp(loss, 0.0, 1.0)
 
         train_loss_sum += loss.item()
 
@@ -91,6 +114,9 @@ def train_epoch(model: torch.nn.Module,
                        f"avg_loss: {current_avg_loss:.4f}, iou: {current_iou:.4f}, oa: {current_oa:.4f}, "
                        f"pa: {current_pa:.4f}, recall: {current_recall:.4f}, F1: {current_f1:.4f}, kappa: {current_kappa:.4f}")
 
+        # if idx_batch_train + 1 >= 20:
+        #     break  # 快速测试时只跑20个批次
+
     # 计算epoch指标
     train_epoch_loss = train_loss_sum / max(train_batch_count, 1)
     train_once_OA = train_metric.OverallAccuary()
@@ -109,6 +135,7 @@ def train_epoch(model: torch.nn.Module,
     writer.add_scalar('train_F1_epoch', train_once_F1, epoch_id)
     writer.add_scalar('train_kappa_epoch', train_once_kappa, epoch_id)
 
+    
     return {
         'loss': train_epoch_loss,
         'oa': train_once_OA,
@@ -125,7 +152,10 @@ def validate_epoch(model: torch.nn.Module,
                    criterion_iou: torch.nn.Module,
                    criterion_ce: torch.nn.Module,
                    criterion_dice_edge: torch.nn.Module,
-                   lamda: float,
+                   criterion_contrast: torch.nn.Module,
+                   alpha: float,
+                   beta: float,
+                   gamma: float,
                    device: torch.device,
                    epoch_id: int,
                    args,
@@ -140,7 +170,10 @@ def validate_epoch(model: torch.nn.Module,
     :param criterion_iou: IOU损失函数
     :param criterion_ce: 交叉熵损失函数
     :param criterion_dice_edge: Dice边缘损失函数
-    :param lamda: 边缘损失权重
+    :param criterion_contrast: 对比损失函数
+    :param alpha: segmentation loss weight for CE vs IoU
+    :param beta: contrastive loss weight
+    :param gamma: edge loss weight
     :param device: 设备
     :param epoch_id: 当前epoch编号
     :param args: 参数对象
@@ -149,6 +182,9 @@ def validate_epoch(model: torch.nn.Module,
     :param batch_val_records: 批次记录列表
     :return: 包含验证loss和各项指标的字典
     """
+    if not (0.0 <= beta <= 1.0 and 0.0 <= gamma <= 1.0 and beta + gamma <= 1.0):
+        raise ValueError(f"beta and gamma must satisfy 0 <= beta <=1, 0 <= gamma <=1 and beta+gamma <=1; got beta={beta}, gamma={gamma}")
+
     model.eval()
     val_metric = SegmentationMetric(numClass=2)
     val_loss_sum = 0.0
@@ -168,8 +204,16 @@ def validate_epoch(model: torch.nn.Module,
             loss_ce = criterion_ce(label_pred, label)
             loss_iou = criterion_iou(label_pred, label, 2)
             loss_dice_edge = criterion_dice_edge(model_x[1], edge, 2)
-            loss = loss_iou + loss_ce + lamda * loss_dice_edge
+            loss_contrast = criterion_contrast(model_x[2], model_x[3], label)
 
+            loss_ce_norm = _normalize_ce(loss_ce)
+            loss_iou_norm = torch.clamp(loss_iou, 0.0, 1.0)
+            loss_edge_norm = torch.clamp(loss_dice_edge, 0.0, 1.0)
+            loss_contrast_norm = torch.clamp(loss_contrast, 0.0, 1.0)
+
+            loss_seg = alpha * loss_ce_norm + (1.0 - alpha) * loss_iou_norm
+            loss = (1.0 - beta - gamma) * loss_seg + beta * loss_contrast_norm + gamma * loss_edge_norm
+            loss = torch.clamp(loss, 0.0, 1.0)
             val_loss_sum += loss.item()
 
             label_pred1 = torch.argmax(label_pred, dim=1)

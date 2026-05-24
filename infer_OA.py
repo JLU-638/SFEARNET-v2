@@ -8,7 +8,7 @@ import torch.utils.data
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import cv2
-from model.SFEARNet import SFEARNet
+from model.sfearnet import SFEARNet
 from data.Dataset import Dataset
 from train_options import parser
 from Metric import SegmentationMetric

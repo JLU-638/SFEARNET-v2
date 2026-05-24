@@ -1,0 +1,164 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1080" viewBox="0 0 1800 1080">
+  <defs>
+    <style>
+      .bg { fill:#f8fafc; }
+      .box { stroke-width:2.4; rx:12; ry:12; }
+      .txtH { font:700 24px 'Times New Roman', Times, serif; fill:#0f172a; }
+      .txt { font:500 18px 'Times New Roman', Times, serif; fill:#1e293b; }
+      .txtS { font:500 16px 'Times New Roman', Times, serif; fill:#334155; }
+      .chip { font:700 17px 'Times New Roman', Times, serif; fill:#ffffff; }
+      .ln { stroke:#334155; stroke-width:2.6; fill:none; marker-end:url(#arr); }
+      .lnc { stroke:#6d28d9; stroke-width:2.6; fill:none; marker-end:url(#arrC); }
+      .dashed { stroke-dasharray:8 6; }
+    </style>
+    <marker id="arr" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#334155"/>
+    </marker>
+    <marker id="arrC" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#6d28d9"/>
+    </marker>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1800" height="1080"/>
+
+  <!-- Expanded internals (visual mini-structures) -->
+  <rect class="box" x="250" y="16" width="520" height="118" stroke="#2563eb" fill="#dbeafe"/>
+  <text class="txtS" x="270" y="38">Shared Backbone: hierarchical encoder</text>
+  <rect class="box" x="270" y="50" width="86" height="58" stroke="#1d4ed8" fill="#eff6ff"/>
+  <text class="txtS" x="282" y="84">Patch</text>
+  <text class="txtS" x="281" y="102">Embed</text>
+  <rect class="box" x="378" y="50" width="70" height="58" stroke="#1d4ed8" fill="#eff6ff"/>
+  <text class="txtS" x="399" y="86">S1</text>
+  <rect class="box" x="462" y="50" width="70" height="58" stroke="#1d4ed8" fill="#eff6ff"/>
+  <text class="txtS" x="483" y="86">S2</text>
+  <rect class="box" x="546" y="50" width="70" height="58" stroke="#1d4ed8" fill="#eff6ff"/>
+  <text class="txtS" x="567" y="86">S3</text>
+  <rect class="box" x="630" y="50" width="70" height="58" stroke="#1d4ed8" fill="#eff6ff"/>
+  <text class="txtS" x="651" y="86">S4</text>
+  <line class="ln" x1="356" y1="79" x2="378" y2="79"/>
+  <line class="ln" x1="448" y1="79" x2="462" y2="79"/>
+  <line class="ln" x1="532" y1="79" x2="546" y2="79"/>
+  <line class="ln" x1="616" y1="79" x2="630" y2="79"/>
+  <line class="ln" x1="500" y1="134" x2="500" y2="150"/>
+
+  <rect class="box" x="790" y="16" width="370" height="118" stroke="#0d9488" fill="#ccfbf1"/>
+  <text class="txtS" x="810" y="38">Pyramid Merge: multi-scale pairwise fusion</text>
+  <rect class="box" x="810" y="50" width="58" height="36" stroke="#0f766e" fill="#ecfeff"/>
+  <text class="txtS" x="827" y="73">C1</text>
+  <rect class="box" x="882" y="50" width="58" height="36" stroke="#0f766e" fill="#ecfeff"/>
+  <text class="txtS" x="899" y="73">C2</text>
+  <rect class="box" x="954" y="50" width="58" height="36" stroke="#0f766e" fill="#ecfeff"/>
+  <text class="txtS" x="971" y="73">C3</text>
+  <rect class="box" x="1026" y="50" width="58" height="36" stroke="#0f766e" fill="#ecfeff"/>
+  <text class="txtS" x="1043" y="73">C4</text>
+  <rect class="box" x="900" y="95" width="150" height="28" stroke="#0f766e" fill="#ecfeff"/>
+  <text class="txtS" x="928" y="114">Merge Output</text>
+  <line class="ln" x1="839" y1="86" x2="930" y2="95"/>
+  <line class="ln" x1="911" y1="86" x2="955" y2="95"/>
+  <line class="ln" x1="983" y1="86" x2="995" y2="95"/>
+  <line class="ln" x1="1055" y1="86" x2="1025" y2="95"/>
+  <line class="ln" x1="975" y1="134" x2="975" y2="150"/>
+
+  <!-- Inputs -->
+  <rect class="box" x="60" y="120" width="230" height="90" stroke="#0ea5a4"/>
+  <text class="txtH" x="95" y="175">Time-1 Image</text>
+  <rect class="box" x="60" y="250" width="230" height="90" stroke="#0ea5a4"/>
+  <text class="txtH" x="95" y="305">Time-2 Image</text>
+
+  <!-- Shared backbone -->
+  <rect class="box" x="350" y="150" width="300" height="160" stroke="#2563eb" fill="#dbeafe"/>
+  <text class="txtH" x="390" y="205">Shared Backbone</text>
+  <text class="txt" x="430" y="240">MiT Encoder</text>
+  <text class="txtS" x="390" y="272">Multi-scale features</text>
+
+  <line class="ln" x1="290" y1="165" x2="350" y2="165"/>
+  <line class="ln" x1="290" y1="295" x2="350" y2="295"/>
+
+  <!-- Pyramid merge -->
+  <rect class="box" x="710" y="150" width="300" height="160" stroke="#0d9488" fill="#ccfbf1"/>
+  <text class="txtH" x="752" y="205">Pyramid Merge</text>
+  <text class="txt" x="745" y="240">Temporal pyramid fusion</text>
+  <text class="txtS" x="745" y="272">Scale levels C1-C4</text>
+  <polyline class="ln" points="650,230 690,230 690,150 975,150 975,230 710,230"/>
+
+  <!-- Dual heads -->
+  <rect class="box" x="1070" y="90" width="290" height="100" stroke="#1d4ed8" fill="#f8fafc"/>
+  <text class="txtH" x="1115" y="145">Edge Guidance</text>
+
+  <rect class="box" x="1070" y="220" width="290" height="100" stroke="#1d4ed8" fill="#f8fafc"/>
+  <text class="txtH" x="1100" y="275">SegFormer Head</text>
+
+  <line class="ln" x1="1010" y1="170" x2="1070" y2="140"/>
+  <line class="ln" x1="1010" y1="290" x2="1070" y2="270"/>
+
+  <!-- Resampler outputs -->
+  <rect class="box" x="1420" y="90" width="300" height="100" stroke="#0369a1" fill="#e0f2fe"/>
+  <text class="txtH" x="1462" y="145">Edge Logits</text>
+  <rect class="box" x="1420" y="220" width="300" height="100" stroke="#0369a1" fill="#e0f2fe"/>
+  <text class="txtH" x="1450" y="275">Change Logits</text>
+
+  <line class="ln" x1="1360" y1="140" x2="1420" y2="140"/>
+  <line class="ln" x1="1360" y1="270" x2="1420" y2="270"/>
+
+  <!-- Contrastive feature tap -->
+  <rect class="box" x="710" y="370" width="300" height="95" stroke="#7c3aed" fill="#f5f3ff"/>
+  <text class="txtH" x="768" y="426">Deep Feature Tap</text>
+  <text class="txtS" x="742" y="448">Top-stage feature pair</text>
+  <line class="lnc dashed" x1="580" y1="310" x2="580" y2="400"/>
+  <line class="lnc dashed" x1="580" y1="400" x2="710" y2="400"/>
+
+  <!-- Loss branches (reordered) -->
+  <rect class="box" x="60" y="540" width="220" height="130" stroke="#334155" fill="#e2e8f0"/>
+  <text class="txtH" x="98" y="600">Parameter Update</text>
+  <text class="txtS" x="95" y="630">Backpropagation step</text>
+
+  <rect class="box" x="340" y="540" width="320" height="130" stroke="#1e40af" fill="#dbeafe"/>
+  <text class="txtH" x="388" y="588">Bounded Objective</text>
+  <text class="txtS" x="378" y="615">Weighted branch fusion</text>
+  <text class="txtS" x="410" y="640">Range clipping to [0,1]</text>
+
+  <rect class="box" x="730" y="530" width="430" height="150" stroke="#6d28d9" fill="#ede9fe"/>
+  <text class="txtH" x="850" y="575">MarginalDistance</text>
+  <circle cx="775" cy="615" r="16" fill="#2563eb"/><text x="769" y="621" class="chip">1</text>
+  <text class="txtS" x="800" y="620">feature alignment</text>
+  <circle cx="915" cy="615" r="16" fill="#2563eb"/><text x="909" y="621" class="chip">2</text>
+  <text class="txtS" x="940" y="620">distance estimation</text>
+  <circle cx="1085" cy="615" r="16" fill="#2563eb"/><text x="1079" y="621" class="chip">3</text>
+  <text class="txtS" x="1110" y="620">marginal contrast/text>
+  <text class="txtS" x="850" y="652">aggregation and normalization</text>
+
+  <rect class="box" x="1320" y="500" width="220" height="115" stroke="#b45309" fill="#fef3c7"/>
+  <text class="txtH" x="1360" y="550">Edge Loss</text>
+  <text class="txtS" x="1360" y="580">Dice supervision</text>
+
+  <rect class="box" x="1580" y="500" width="220" height="115" stroke="#b45309" fill="#fef3c7"/>
+  <text class="txtH" x="1610" y="550">Seg. Loss</text>
+  <text class="txtS" x="1630" y="580">CE-IoU supervision</text>
+
+  <!-- short orthogonal links -->
+  <line class="lnc" x1="860" y1="465" x2="860" y2="530"/>
+  <line class="ln" x1="1320" y1="558" x2="1160" y2="605"/>
+  <line class="ln" x1="1580" y1="558" x2="1540" y2="558"/>
+  <line class="ln" x1="730" y1="605" x2="660" y2="605"/>
+  <line class="ln" x1="340" y1="605" x2="280" y2="605"/>
+
+  <!-- logits to losses (short vertical drops) -->
+  <polyline class="ln" points="1570,320 1570,470 1690,470 1690,500"/>
+  <polyline class="ln" points="1570,190 1570,470 1430,470 1430,500"/>
+
+  <!-- update to model weights -->
+  <polyline class="ln" points="170,540 170,490 430,490 430,310"/>
+
+  <!-- supervision masks -->
+  <rect class="box" x="1320" y="640" width="220" height="90" stroke="#0f766e" fill="#ccfbf1"/>
+  <text class="txtH" x="1358" y="690">Edge Mask</text>
+  <text class="txtS" x="1362" y="715">Boundary label</text>
+
+  <rect class="box" x="1580" y="640" width="220" height="90" stroke="#0f766e" fill="#ccfbf1"/>
+  <text class="txtH" x="1608" y="690">Change Mask</text>
+  <text class="txtS" x="1620" y="715">Pixel-wise label</text>
+
+  <line class="ln" x1="1430" y1="640" x2="1430" y2="615"/>
+  <line class="ln" x1="1690" y1="640" x2="1690" y2="615"/>
+
+</svg>

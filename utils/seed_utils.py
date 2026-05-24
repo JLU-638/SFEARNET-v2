@@ -1,6 +1,8 @@
-import  torch
+import torch
 
 from lightning import seed_everything
+
+
 def set_seed(seed: int) -> None:
     r"""
 
