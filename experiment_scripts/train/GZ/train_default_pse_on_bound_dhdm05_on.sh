@@ -12,13 +12,13 @@ unset ALL_PROXY
 cd "$(dirname "$0")/../../.."
 
 # region --- 基础环境配置 ---
-GPU_ID=1
+GPU_ID=3
 SEED=0
 # endregion
 
 # region --- 数据集相关参数 ---
-DATASET_TAG="LEVIR_CD"
-DATASET_DIR="./data/datasets/LEVIR_CD_256/"
+DATASET_TAG="WHU_CD"
+DATASET_DIR="./data/datasets/WHU-CD-256/"
 # endregion
 
 # region --- 模型相关参数 ---
@@ -33,7 +33,7 @@ PRINT_EVERY_BATCHES=100
 NUM_WORKERS=4
 PIN_MEMORY=true
 PERSISTENT_WORKERS=true
-RESULT_DIR="./LEVIR_CD_256_result_1/"
+RESULT_DIR="./WHU-CD-256_result_1/"
 # endregion
 
 # region --- 优化器与损失相关参数 ---
@@ -52,7 +52,7 @@ mkdir -p "$SAVE_DIR"
 TYPE_LOSS="test"
 
 # 差异计算选择
-DIFF_MODE="abs"
+DIFF_MODE="DHDM05"
 
 
 echo "Starting Experiment: model=${MODEL_NAME}, data=${DATASET_TAG}"

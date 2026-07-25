@@ -12,13 +12,13 @@ unset ALL_PROXY
 cd "$(dirname "$0")/../../.."
 
 # region --- 基础环境配置 ---
-GPU_ID=1
+GPU_ID=2
 SEED=0
 # endregion
 
 # region --- 数据集相关参数 ---
-DATASET_TAG="LEVIR_CD"
-DATASET_DIR="./data/datasets/LEVIR_CD_256/"
+DATASET_TAG="GZ_CD"
+DATASET_DIR="./data/datasets/GZ-CD_256/"
 # endregion
 
 # region --- 模型相关参数 ---
@@ -33,7 +33,7 @@ PRINT_EVERY_BATCHES=100
 NUM_WORKERS=4
 PIN_MEMORY=true
 PERSISTENT_WORKERS=true
-RESULT_DIR="./LEVIR_CD_256_result_1/"
+RESULT_DIR="./GZ_CD_256_result_1/"
 # endregion
 
 # region --- 优化器与损失相关参数 ---
@@ -49,10 +49,10 @@ SAVE_DIR="./logs_of_shell/${DATASET_TAG}/${MODEL_NAME}/${EXP_LEAF}/run_${RUN_TIM
 mkdir -p "$SAVE_DIR"
 
 # loss选择，纯伪变化，原sfearnet,联合一致优化
-TYPE_LOSS="test"
+TYPE_LOSS="use_pseudo_only"
 
 # 差异计算选择
-DIFF_MODE="abs"
+DIFF_MODE="DHDM"
 
 
 echo "Starting Experiment: model=${MODEL_NAME}, data=${DATASET_TAG}"

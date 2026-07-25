@@ -12,7 +12,7 @@ unset ALL_PROXY
 cd "$(dirname "$0")/../../.."
 
 # region --- 基础环境配置 ---
-GPU_ID=1
+GPU_ID=5
 SEED=0
 # endregion
 
@@ -52,7 +52,7 @@ mkdir -p "$SAVE_DIR"
 TYPE_LOSS="test"
 
 # 差异计算选择
-DIFF_MODE="abs"
+DIFF_MODE="DHDM"
 
 
 echo "Starting Experiment: model=${MODEL_NAME}, data=${DATASET_TAG}"

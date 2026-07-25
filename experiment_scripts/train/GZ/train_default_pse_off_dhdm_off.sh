@@ -12,7 +12,7 @@ unset ALL_PROXY
 cd "$(dirname "$0")/../../.."
 
 # region --- 基础环境配置 ---
-GPU_ID=1
+GPU_ID=4
 SEED=0
 # endregion
 
@@ -49,7 +49,7 @@ SAVE_DIR="./logs_of_shell/${DATASET_TAG}/${MODEL_NAME}/${EXP_LEAF}/run_${RUN_TIM
 mkdir -p "$SAVE_DIR"
 
 # loss选择，纯伪变化，原sfearnet,联合一致优化
-TYPE_LOSS="test"
+TYPE_LOSS="none"
 
 # 差异计算选择
 DIFF_MODE="abs"
