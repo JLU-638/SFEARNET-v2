@@ -6,3 +6,14 @@ logs/
 logs_of_shell/
 __pycache__/
 vis_beta_alg/
+baselines/
+manuscript/
+all_predictions/
+data/pseudo_change_subsets/
+recovered_code/
+recovered_runs/
+results/
+tmp/
+nohup_logs/
+.codex/
+ai2_transfer/
