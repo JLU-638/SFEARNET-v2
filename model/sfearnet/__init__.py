@@ -75,7 +75,7 @@ class SegFormerHead_1(nn.Module):
         self.dropout = nn.Dropout2d(dropout_ratio)
 
     def forward(self, inputs):
-        c1, c2, c3, c4 = inputs
+        c1, c2, c3, c4 = inputs#【B, C1, H1, W1】,【B, C2, H2, W2】,【B, C3, H3, W3】,【B, C4, H4, W4】
         # b0:torch.Size([8, 32, 64, 64]) torch.Size([8, 64, 32, 32]) torch.Size([8, 160, 16, 16]) torch.Size([8, 256, 8, 8])
         # print(c1.size(), c2.size(), c3.size(), c4.size())
         # b1 torch.Size([8, 64, 64, 64]) torch.Size([8, 128, 32, 32]) torch.Size([8, 320, 16, 16]) torch.Size([8, 512, 8, 8])
@@ -192,7 +192,13 @@ class SegFormerHead_0(nn.Module):
 
 
 class SFEARNet(nn.Module):
-    def __init__(self, num_classes: int = 21, phi: str = 'b1', pretrained: bool = False) -> None:
+    def __init__(
+        self,
+        num_classes: int = 21,
+        phi: str = 'b1',
+        pretrained: bool = False,
+        diff_mode: str = 'abs',
+    ) -> None:
         """
         用于双时相遥感变化检测的 SFEARNet 主模型。
 
@@ -201,8 +207,10 @@ class SFEARNet(nn.Module):
                 在本项目中通常设置为 2（unchanged/changed）。
             phi (str): 主干规模标识。当前支持 'b0' 与 'b1'。
             pretrained (bool): 是否加载主干预训练权重。
+            diff_mode (str): 差异计算模式。可选 'abs' 或 'cos'。
         """
         super(SFEARNet, self).__init__()
+        self.diff_mode = diff_mode
         self.in_channels = {
             # 'b0': [32, 64, 160, 256], 'b1': [64, 128, 320, 512], 'b2': [64, 128, 320, 512],
             # 'b3': [64, 128, 320, 512], 'b4': [64, 128, 320, 512], 'b5': [64, 128, 320, 512],
@@ -225,20 +233,20 @@ class SFEARNet(nn.Module):
             self.re = Resampler(64, 256)
             self.re2 = Resampler(64, 256)
             self.eg = Edge_Guidance_1()
-            self.py1 = Pyramid_Merge(64)
-            self.py2 = Pyramid_Merge(128)
-            self.py3 = Pyramid_Merge(320)
-            self.py4 = Pyramid_Merge(512)
+            self.py1 = Pyramid_Merge(64, diff_mode=self.diff_mode)
+            self.py2 = Pyramid_Merge(128, diff_mode=self.diff_mode)
+            self.py3 = Pyramid_Merge(320, diff_mode=self.diff_mode)
+            self.py4 = Pyramid_Merge(512, diff_mode=self.diff_mode)
         elif phi == 'b0':
             self.decode_head = SegFormerHead_0(
                 num_classes, self.in_channels, self.embedding_dim)
             self.re = Resampler(64, 256)
             self.re2 = Resampler(64, 256)
             self.eg = Edge_Guidance_0()
-            self.py1 = Pyramid_Merge(32)
-            self.py2 = Pyramid_Merge(64)
-            self.py3 = Pyramid_Merge(160)
-            self.py4 = Pyramid_Merge(256)
+            self.py1 = Pyramid_Merge(32, diff_mode=self.diff_mode)
+            self.py2 = Pyramid_Merge(64, diff_mode=self.diff_mode)
+            self.py3 = Pyramid_Merge(160, diff_mode=self.diff_mode)
+            self.py4 = Pyramid_Merge(256, diff_mode=self.diff_mode)
 
     def forward(
         self, input1: torch.Tensor, input2: torch.Tensor
@@ -273,27 +281,24 @@ class SFEARNet(nn.Module):
 
         H, W = input1.size(2), input1.size(3)
 
-        # 返回的是4个特征图的列表，由MixVisionTransformer返回，分别是输入图像的1/4、1/8、1/16、1/32分辨率的特征图，通道数分别是32、64、160、256（b0）或64、128、320、512（b1）
+        # 返回的是4个特征图的列表，由MixVisionTransformer返回，分别是输入图像的1/4、1/8、1/16、1/32分辨率的特征图，通道数分别是32、64、160、256（b0）或64、128、320、512（b1）x1=【c1,c2,c3,c4】,x2=【c1',c2',c3',c4'】-lgx
         x1 = self.backbone(input1)
         x2 = self.backbone(input2)  # 返回的是4个特征图的列表
         # x=[torch.abs(xa-xb) for xa,xb in zip(x1,x2)]
         x_0 = self.py1(x1[0], x2[0])
+        # x_0, discrepancy_1 = self.py1(x1[0], x2[0])
         x_1 = self.py2(x1[1], x2[1])
         x_2 = self.py3(x1[2], x2[2])
         x_3 = self.py4(x1[3], x2[3])
-        x = [x_0, x_1, x_2, x_3]
-        # print(x_3.size())
-
-        # edge_64_2,feature_1,feature_2,feature_3,feature_4=eg(x),得到两类，一个是边缘信息，另外一类是对PE提取后的特征图进行边缘引导增强后的特征图，分别是feature_1、feature_2、feature_3、feature_4，对应输入的四个特征图。
-        eg = self.eg(x)
-        edge = eg[0]#边缘信息-lgx
-        x = eg[1:]
-        # print(x[0].size())
-        x = self.decode_head(x)#形状为 [B, num_classes, H_c1, W_c1] 的 logits（与最高分辨率特征 c1 对齐）-lgx
+        x = [x_0, x_1, x_2, x_3]    #经过金字塔融合模块处理后的特征图列表，分别是输入图像的1/4、1/8、1/16、1/32分辨率的特征图，通道数分别是32、64、160、256（b0），并且经过了差异增强处理-lgx
+        eg = self.eg(x)     #形状是【B, 2, H1, W1】（边缘信息）,【B, C1, H1, W1】,【B, C2, H2, W2】,【B, C3, H3, W3】,【B, C4, H4, W4】（四个经过边缘引导增强后的特征图）。-lgx
+        edge = eg[0]    #形状是【B, 2, H1, W1】（边缘信息）-lgx
+        x = eg[1:]  #【B, C1, H1, W1】,【B, C2, H2, W2】,【B, C3, H3, W3】,【B, C4, H4, W4】（四个经过边缘引导增强后的特征图）-lgx
+        x = self.decode_head(x)     #形状为[B, num_classes, H1, W1] 的 logits（与最高分辨率特征 c1 对齐）-lgx
 
         # x = F.interpolate(x, size=(H, W), mode='bilinear', align_corners=True)
-        x = self.re(x)#上采样到输入图像大小-lgx
-        edge = self.re2(edge)
+        x = self.re(x)      #   [B, num_classes, 256, 256]（预测信息）-lgx  
+        edge = self.re2(edge)   #   [B, num_classes, 256, 256 ]（边缘信息）-lgx
 
         # Extract features for contrastive loss
         feat1 = F.interpolate(x1[3], size=(
